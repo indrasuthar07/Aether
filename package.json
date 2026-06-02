@@ -1,21 +1,18 @@
 {
-  "name": "aether",
-  "version": "1.0.0",
-  "description": "A peer-to-peer terminal sharing tool",
-  "main": "index.js",
+  "name": "aether-monorepo",
+  "private": true,
+  "workspaces": [
+    "agent",
+    "server",
+    "web"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "dev:agent": "npm run dev -w agent",
+    "dev": "npm run dev:server & npm run dev:web"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/indrasuthar07/Aether.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/indrasuthar07/Aether/issues"
-  },
-  "homepage": "https://github.com/indrasuthar07/Aether#readme"
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
 }
