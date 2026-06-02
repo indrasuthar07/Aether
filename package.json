@@ -1,0 +1,21 @@
+{
+  "name": "aether",
+  "version": "1.0.0",
+  "description": "A peer-to-peer terminal sharing tool",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indrasuthar07/Aether.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/indrasuthar07/Aether/issues"
+  },
+  "homepage": "https://github.com/indrasuthar07/Aether#readme"
+}
