@@ -15,6 +15,9 @@
     "aether": "dist/index.js"
   },
   "dependencies": {
+    "@roamhq/wrtc": "^0.10.0",
+    "chalk": "^5.6.2",
+    "console": "^0.7.2",
     "crypto": "^1.0.1",
     "node-pty": "^1.1.0",
     "os": "^0.1.2",
