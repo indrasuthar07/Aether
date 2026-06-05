@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+
 @import '@xterm/xterm/css/xterm.css';
 
 @theme inline {
