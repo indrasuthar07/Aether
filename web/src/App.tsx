@@ -1,18 +1,18 @@
-import Nav from "./components/Nav";
-import Hero from "./components/Hero";
-import HowItWorks from "./components/HowItWorks";
-import Cta from "./components/Cta";
-import Footer from "./components/Footer";
-
+import { Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import TerminalPage from './pages/TerminalPage';
+import ConnectTerminal from './pages/ConnectTerminal';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
     <main className="min-h-screen bg-aether-bg text-aether-ink antialiased">
-      <Nav />
-      <Hero />
-      <HowItWorks />
-      <Cta />
-      <Footer />
+       <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/connect" element={<ConnectTerminal/>} />
+      <Route path="/t/:code" element={<TerminalPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
     </main>
   );
 }
