@@ -6,19 +6,19 @@ function ConnectTerminal() {
   const [code, setCode] = useState('');
   const navigate = useNavigate();
 
-  const iscomplete = code.length === 6;
+  const isComplete = code.length === 6;
 
   const handleSubmit = useCallback(() => {
-    if (iscomplete) {
+    if (isComplete) {
       navigate(`/t/${code}`);
     }
-    }, [code, iscomplete, navigate]);
+    }, [code, isComplete, navigate]);
 
 const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-  if (e.key === 'Enter' && iscomplete) {
+  if (e.key === 'Enter' && isComplete) {
     handleSubmit();
   }
-}, [iscomplete, handleSubmit]);
+}, [isComplete, handleSubmit]);
 
 return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
