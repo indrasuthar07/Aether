@@ -1,10 +1,8 @@
 import mongoose from 'mongoose';
-import { config } from './config.js';
-
+import { config } from './config';
 
  // Connect to MongoDB. If the connection fails or MONGO_URI is not configured,
  // the server continues running without database functionality.
- 
 export async function connectDatabase(): Promise<void> {
   const uri = config.MONGO_URI;
 

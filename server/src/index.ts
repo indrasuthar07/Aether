@@ -2,9 +2,12 @@ import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
-import { connectDatabase } from './db.js';
+import { connectDatabase } from './db';
+import { rooms } from './room';
 import { healthRouter } from './routes/health';
 import { config } from './config';
+import { handleConnection } from './signaling';
+
 const app = express();
 
 // Middleware
