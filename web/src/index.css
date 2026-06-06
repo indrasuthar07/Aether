@@ -15,9 +15,9 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
 
-  --color-aether-accent: #B8451F;
+  --color-aether-accent: #000d88;
   --color-aether-soft: #F5E6DD;
-  --color-aether-bg: #F7F3EC;
+  --color-aether-bg: #e8eaff;
   --color-aether-ink: #1C1714;
   --color-aether-terminal: #1F1A17;
   --color-aether-footer: #2A211C;
