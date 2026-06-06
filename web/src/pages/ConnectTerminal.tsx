@@ -10,7 +10,7 @@ function ConnectTerminal() {
 
   const handleSubmit = useCallback(() => {
     if (isComplete) {
-      navigate(`/t/${code}`);
+      navigate(`/term/${code}`);
     }
     }, [code, isComplete, navigate]);
 

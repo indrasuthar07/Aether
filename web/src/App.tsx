@@ -1,6 +1,6 @@
 import { Routes, Route, Outlet } from 'react-router-dom'; // 1. Import Outlet
 import Home from './pages/Home';
-// import TerminalPage from './pages/TerminalPage';
+import TerminalPage from './pages/TerminalPage';
 import ConnectTerminal from './pages/ConnectTerminal';
 import Nav from './components/Nav';
 import Footer from './components/Footer';
@@ -27,7 +27,7 @@ function App() {
           <Route path="/term" element={<ConnectTerminal />} />
         </Route>
 
-        {/* <Route path="/term/:code" element={<TerminalPage />} /> */}
+        <Route path="/term/:code" element={<TerminalPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </main>
