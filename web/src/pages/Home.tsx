@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Copy, Download, Share2, Terminal as TerminalIcon } from "lucide-react";
+import { Check, Copy, Download, Icon, Share2, Terminal as TerminalIcon } from "lucide-react";
 import TerminalMockup from "../components/TerminalMockup";
 
 const Github = ({ size = 24, className = "" }) => (
@@ -90,8 +90,8 @@ export function Hero() {
 
             {/* Code Block */}
             <div className="flex items-center justify-between gap-4 px-5 py-4 bg-black/20 border-t border-white/5">
-              <code className="font-mono text-[14px] sm:text-[15px] text-aether-soft truncate flex-1 text-left selection:bg-blue-800/30">
-                <span className="text-blue-800 pr-3 select-none">
+              <code className="font-mono text-[14px] sm:text-[15px] text-aether-soft truncate flex-1 text-left">
+                <span className="text-white pr-3 select-none">
                   {selectedOS === "Windows" ? ">" : "$"}
                 </span>
                 {cmd}
@@ -102,7 +102,7 @@ export function Hero() {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
                 }}
-                className="shrink-0 flex items-center justify-center p-2 rounded-md text-blue-800 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                className="shrink-0 flex items-center justify-center p-2 rounded-md text-white/30 hover:text-white hover:bg-white/10 transition-all active:scale-95"
                 aria-label="Copy command"
               >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
@@ -177,15 +177,17 @@ export function Cta() {
 
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
           <a
-            href="#"
-            className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-white text-aether-footer font-bold px-8 py-3.5 hover:bg-zinc-50 transition-colors shadow-lg"
+            href="/term"
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-white text-aether-footer font-bold px-8 py-3.5 hover:bg-zinc-50 transition-colors shadow-lg gap-2"
           >
+            <TerminalIcon className="w-5 h-5" />
             Open Web Terminal
           </a>
           <a
             href="#"
-            className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 text-white font-bold px-8 py-3.5 hover:bg-white/10 transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 text-white font-bold px-8 py-3.5 hover:bg-white/10 transition-colors gap-2"
           >
+            <Github className="w-5 h-5" />
             View on GitHub
           </a>
         </div>

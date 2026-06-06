@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="bg-aether-footer">
+    <footer className="bg-blue-900">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-8">
           <div>
@@ -13,7 +13,7 @@ export default function Footer() {
             <a href="#" className="hover:text-white transition">aether.sh</a>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t border-white/10 text-center text-xs text-white/50">
+        <div className="mt-2 pt-6 border-t border-white/10 text-center text-xs text-white/50">
           Crafted in the open, for terminals everywhere.
         </div>
       </div>
