@@ -1,4 +1,6 @@
 import { WebSocket } from 'ws';
+import { createLogger } from './logger';
+const log = createLogger('room');
 
 export class Room {
   code: string;
@@ -15,7 +17,7 @@ export class Room {
     this.createdAt = new Date();
 
     this.cleanupTimer = setTimeout(() => {
-      console.log(`[Room] TTL expired for room "${this.code}", closing`);
+      log.info('Room TTL expired, closing', { code: this.code });
       this.close();
     }, Room.TTL_MS);
   }
@@ -35,30 +37,27 @@ export class Room {
     }
 
     rooms.delete(this.code);
-    console.log(`[Room] Room "${this.code}" closed and removed`);
+    log.info('Room closed and removed', { code: this.code, activeRooms: rooms.size });
   }
 }
 
-// In-memory room store keyed by share code 
+// In-memory room store keyed by share code
 export const rooms = new Map<string, Room>();
 
-// Create a new room with the given share code and agent WebSocket
-// If a room with this code already exists, the old one is closed first.
- 
 export function createRoom(code: string, agentSocket: WebSocket): Room {
   const existing = rooms.get(code);
   if (existing) {
-    console.log(`[Room] Replacing existing room for code "${code}"`);
+    log.warn('Replacing existing room', { code });
     existing.close();
   }
 
   const room = new Room(code, agentSocket);
   rooms.set(code, room);
-  console.log(`[Room] Created room "${code}" (active rooms: ${rooms.size})`);
+  log.info('Room created', { code, activeRooms: rooms.size });
   return room;
 }
 
-// Find a room by share code.
+// Find a room by share code. 
 export function findRoom(code: string): Room | undefined {
   return rooms.get(code);
 }

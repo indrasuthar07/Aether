@@ -1,13 +1,16 @@
 import mongoose from 'mongoose';
 import { config } from './config';
+import { createLogger } from './logger';
+const log = createLogger('db');
 
- // Connect to MongoDB. If the connection fails or MONGO_URI is not configured,
- // the server continues running without database functionality.
+ // Connect to MongoDB. If the connection fails or MONGO_URI is not
+ // configured, the server continues running without database
+ // functionality.
 export async function connectDatabase(): Promise<void> {
   const uri = config.MONGO_URI;
 
   if (!uri) {
-    console.warn('[DB] MONGO_URI is not set — running without database');
+    log.warn('MONGO_URI is not set — running without database');
     return;
   }
 
@@ -15,18 +18,17 @@ export async function connectDatabase(): Promise<void> {
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
     });
-    console.log('[DB] Connected to MongoDB');
+    log.info('Connected to MongoDB');
 
     mongoose.connection.on('error', (err) => {
-      console.error('[DB] MongoDB connection error:', err.message);
+      log.error('MongoDB connection error', { error: err instanceof Error ? err : new Error(String(err)) });
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.warn('[DB] MongoDB disconnected');
+      log.warn('MongoDB disconnected');
     });
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    console.warn(`[DB] Failed to connect to MongoDB: ${errorMessage}`);
-    console.warn('[DB] Server will continue without database');
+    const error = err instanceof Error ? err : new Error(String(err));
+    log.warn('Failed to connect to MongoDB — server will continue without database', { error });
   }
 }

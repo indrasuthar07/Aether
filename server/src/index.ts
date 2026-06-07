@@ -5,12 +5,15 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { connectDatabase } from './db';
 import { healthRouter } from './routes/health';
-import { config } from './config';
+import { config, validateConfig } from './config';
 import { handleConnection } from './signaling';
 import { ConnectionManager } from './connection-manager';
 import { RateLimiter } from './rate-limiter';
+import { createLogger } from './logger';
 
-// ── Express app ─────────────────────────────────────────────────
+const log = createLogger('server');
+
+// Express app
 
 const app = express();
 
@@ -24,11 +27,11 @@ app.use(
 app.use(express.json());
 app.use(healthRouter);
 
-// ── HTTP server ─────────────────────────────────────────────────
+// HTTP server 
 
 const server = http.createServer(app);
 
-// ── Security infrastructure ─────────────────────────────────────
+// Security infrastructure
 
 const connectionManager = new ConnectionManager({
   maxPerIp: config.MAX_CONNECTIONS_PER_IP,
@@ -42,7 +45,6 @@ const connectionRateLimiter = new RateLimiter(
 
 /**
  * Extract the client IP from an HTTP request.
- *
  * Checks X-Forwarded-For first (for deployments behind a reverse
  * proxy / load balancer), then falls back to the raw socket address.
  */
@@ -55,7 +57,8 @@ function extractIp(req: IncomingMessage): string {
   return req.socket.remoteAddress ?? 'unknown';
 }
 
-// ── WebSocket server ────────────────────────────────────────────
+// WebSocket server
+const wsLog = createLogger('ws');
 
 const wss = new WebSocketServer({
   server,
@@ -70,7 +73,6 @@ const wss = new WebSocketServer({
   verifyClient: (info, callback) => {
     const origin = info.origin;
 
-    // Node.js clients (agent) don't send an Origin header — allow
     if (!origin) {
       callback(true);
       return;
@@ -78,7 +80,7 @@ const wss = new WebSocketServer({
 
     // Browser clients must be from an allowed origin
     if (!config.ALLOWED_ORIGINS.includes(origin)) {
-      console.warn(`[WS] Rejected connection from unauthorized origin: ${origin}`);
+      wsLog.warn('Rejected connection from unauthorized origin', { origin });
       callback(false, 403, 'Forbidden: Origin not allowed');
       return;
     }
@@ -92,57 +94,64 @@ wss.on('connection', (ws, req) => {
 
   // Gate 1: Per-IP connection frequency
   if (connectionRateLimiter.isRateLimited(ip)) {
-    console.warn(`[WS] Connection rate limit exceeded for IP: ${ip}`);
+    wsLog.warn('Connection rate limit exceeded', { ip });
     ws.close(1008, 'Rate limit exceeded');
     return;
   }
 
   // Gate 2: Concurrent connection capacity
   if (!connectionManager.canAccept(ip)) {
-    console.warn(
-      `[WS] Connection limit reached for IP: ${ip} ` +
-      `(per-ip: ${connectionManager.getIpCount(ip)}, global: ${connectionManager.getGlobalCount()})`,
-    );
+    wsLog.warn('Connection limit reached', {
+      ip,
+      perIp: connectionManager.getIpCount(ip),
+      global: connectionManager.getGlobalCount(),
+    });
     ws.close(1008, 'Too many connections');
     return;
   }
 
   // Track the accepted connection (auto-releases on close)
   connectionManager.track(ip, ws);
-
+  
   // Hand off to signaling with the resolved IP for per-action rate limiting
   handleConnection(ws, ip);
 });
 
-// ── Startup ─────────────────────────────────────────────────────
-
+// Startup 
 async function start(): Promise<void> {
-  // Connect to MongoDB (optional — server works without it)
+  // Fail fast on misconfiguration
+  try {
+    validateConfig(config);
+  } catch (err) {
+    log.error('Configuration validation failed', { error: err instanceof Error ? err : new Error(String(err)) });
+    process.exit(1);
+  }
+
+  // Connect to MongoDB (server works without it)
   await connectDatabase();
 
   server.listen(config.PORT, () => {
-    console.log({
-      service: 'aether-server',
-      status: 'running',
+    log.info('Server started', {
       port: config.PORT,
-      http: `http://localhost:${config.PORT}`,
-      ws: `ws://localhost:${config.PORT}`,
+      logLevel: config.LOG_LEVEL,
       maxRooms: config.MAX_ROOMS,
       maxConnectionsPerIp: config.MAX_CONNECTIONS_PER_IP,
       maxGlobalConnections: config.MAX_GLOBAL_CONNECTIONS,
+      maxPayloadBytes: config.MAX_PAYLOAD_BYTES,
+      allowedOrigins: config.ALLOWED_ORIGINS,
     });
   });
 }
 
 start().catch((err) => {
-  console.error('[Server] Fatal startup error:', err);
+  log.error('Fatal startup error', { error: err instanceof Error ? err : new Error(String(err)) });
   process.exit(1);
 });
 
-// ── Graceful shutdown ───────────────────────────────────────────
+// Graceful shutdown
 
 function shutdown(signal: string): void {
-  console.log(`\n[Server] ${signal} received — shutting down`);
+  log.info('Shutdown signal received', { signal });
 
   // Close all WebSocket clients
   wss.clients.forEach((client) => {
@@ -151,7 +160,7 @@ function shutdown(signal: string): void {
 
   wss.close(() => {
     server.close(() => {
-      console.log('[Server] HTTP server closed');
+      log.info('HTTP server closed');
 
       // Release rate-limiter timers so the process can exit cleanly
       connectionRateLimiter.destroy();
@@ -162,7 +171,7 @@ function shutdown(signal: string): void {
 
   // Force exit after 5 seconds if graceful shutdown stalls
   setTimeout(() => {
-    console.error('[Server] Forced shutdown after timeout');
+    log.error('Forced shutdown after timeout');
     process.exit(1);
   }, 5000);
 }
