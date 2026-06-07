@@ -32,4 +32,14 @@
   body {
     font-family: var(--font-sans);
   }
+
+  .xterm {
+    height: 100% !important;
+  }
+  .xterm .xterm-viewport {
+    overflow-y: scroll !important;
+  }
+  .xterm .xterm-screen {
+    overflow: hidden !important;
+  }
 }

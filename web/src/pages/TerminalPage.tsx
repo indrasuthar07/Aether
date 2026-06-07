@@ -153,14 +153,14 @@ function TerminalPage() {
   }, [cleanupWebRTC, navigate]);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#0a0a0a] overflow-hidden font-sans antialiased">
+    <div className="h-screen w-screen flex flex-col bg-[#0a0a0a] font-sans antialiased">
       <StatusBar
         status={status}
         code={code || ''}
         onDisconnect={handleDisconnect}
       />
 
-      <div className="flex-1 mt-10 relative">
+      <div className="flex-1 mt-12 relative min-h-0 overflow-hidden">
         <TerminalView
           ref={terminalViewRef}
           onInput={handleTerminalInput}

@@ -51,6 +51,7 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
       fontFamily: 'JetBrains Mono, Menlo, monospace',
       cursorBlink: true,
       cursorStyle: 'bar',
+      scrollback: 5000,
       allowProposedApi: true,
       convertEol: true
     });
@@ -66,13 +67,6 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
     termRef.current = terminal;
     fitAddonRef.current = fitAddon;
 
-    // Initial fit
-    try {
-      fitAddon.fit();
-    } catch {
-      // Container may not be ready yet
-    }
-
     // Input handler
     const inputDisposable = terminal.onData((data: string) => {
       onInputRef.current?.(data);
@@ -83,9 +77,9 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
       onResizeRef.current?.(cols, rows);
     });
 
-    // Debounced window resize handler
     let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    const handleWindowResize = () => {
+    const containerEl = terminalRef.current;
+    const resizeObserver = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         try {
@@ -93,14 +87,24 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
         } catch {
           // Terminal may have been disposed
         }
-      }, 150);
-    };
+      }, 50);
+    });
+    resizeObserver.observe(containerEl);
 
-    window.addEventListener('resize', handleWindowResize);
+    // Extra safety: fit after the first animation frame to guarantee
+    // the browser has completed layout on initial navigation.
+    const rafId = requestAnimationFrame(() => {
+      try {
+        fitAddon.fit();
+      } catch {
+        // Container may not be ready yet
+      }
+    });
 
     return () => {
+      cancelAnimationFrame(rafId);
       if (resizeTimer) clearTimeout(resizeTimer);
-      window.removeEventListener('resize', handleWindowResize);
+      resizeObserver.disconnect();
       inputDisposable.dispose();
       resizeDisposable.dispose();
       terminal.dispose();

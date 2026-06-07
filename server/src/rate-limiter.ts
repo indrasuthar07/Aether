@@ -1,16 +1,3 @@
-/**
- * Fixed-window rate limiter for the Aether signaling server.
- *
- * Each instance tracks request counts per key (typically an IP address)
- * within a configurable time window. When the count exceeds the limit,
- * subsequent requests are rejected until the window resets.
- *
- * Design choices:
- *  - Fixed window (not sliding) for simplicity and O(1) checks.
- *  - Periodic background cleanup prevents unbounded Map growth.
- *  - `unref()` on the cleanup timer so it doesn't prevent process exit.
- */
-
 interface RateLimitEntry {
   count: number;
   windowStart: number;
@@ -22,10 +9,6 @@ export class RateLimiter {
   private readonly windows: Map<string, RateLimitEntry> = new Map();
   private readonly cleanupTimer: ReturnType<typeof setInterval>;
 
-  /**
-   * @param windowMs   Length of the rate-limit window in milliseconds.
-   * @param maxRequests Maximum number of requests allowed per key within one window.
-   */
   constructor(windowMs: number, maxRequests: number) {
     this.windowMs = windowMs;
     this.maxRequests = maxRequests;
@@ -39,10 +22,6 @@ export class RateLimiter {
     }
   }
 
-  /**
-   * Returns `true` if the given key has exhausted its budget for the
-   * current window. If not rate-limited, the counter is incremented.
-   */
   isRateLimited(key: string): boolean {
     const now = Date.now();
     const entry = this.windows.get(key);
@@ -73,7 +52,6 @@ export class RateLimiter {
     }
   }
 
-  /** Stop the background cleanup timer and release all memory. */
   destroy(): void {
     clearInterval(this.cleanupTimer);
     this.windows.clear();

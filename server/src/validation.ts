@@ -1,42 +1,16 @@
-/**
- * Input validation utilities for the Aether signaling server.
- *
- * Centralizes all validation logic so that every handler applies
- * identical, tested rules — no ad-hoc string checks scattered
- * across the codebase.
- */
-
 const SESSION_CODE_REGEX = /^\d{6}$/;
 
-/**
- * Validates that a value is a well-formed 6-digit session code.
- *
- * Rules:
- *  - Must be a string (rejects numbers, nulls, objects)
- *  - Must be exactly 6 characters
- *  - Must contain only ASCII digits 0-9
- */
 export function isValidSessionCode(code: unknown): code is string {
   return typeof code === 'string' && SESSION_CODE_REGEX.test(code);
 }
 
-// ── Payload sanitization ────────────────────────────────────────
+// Payload sanitization 
 
 export interface SanitizeOptions {
-  /** Only these top-level keys will be forwarded. Everything else is stripped. */
   allowedKeys: string[];
-  /** Maximum byte size of the JSON-serialized sanitized payload. */
   maxSizeBytes: number;
 }
 
-/**
- * Whitelist-filters a payload object and enforces a size cap.
- *
- * Returns the sanitized object, or `null` if:
- *  - The payload is missing / not an object
- *  - Serialization fails (circular refs, BigInt, etc.)
- *  - The serialized size exceeds `maxSizeBytes`
- */
 export function sanitizePayload(
   payload: Record<string, unknown> | undefined,
   options: SanitizeOptions,
@@ -67,9 +41,7 @@ export function sanitizePayload(
   return sanitized;
 }
 
-// ── Relay schemas ───────────────────────────────────────────────
-// Define the exact shape and maximum size of every relay message
-// type. Anything not listed here is rejected.
+// Relay schemas 
 
 export const RELAY_SCHEMAS: Record<string, SanitizeOptions> = {
   offer: {
