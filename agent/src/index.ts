@@ -1,11 +1,10 @@
 import { banner, printcode, info, error } from './logger';
 import { createSessionCode } from './code';
-import { startSession } from './session';
-import { cleanup } from './session';
+import { startSession, cleanup } from './session';
+import { config } from './config';
 
 function getShareUrl(code: string): string {
-  const baseUrl = process.env['TERMLINK_WEB_URL'] || 'https://termlink.vercel.app';
-  return `${baseUrl}/${code}`;
+  return `${config.WEB_URL}/${code}`;
 }
 
 function showHelp(): void {
@@ -64,7 +63,7 @@ async function main(): Promise<void> {
   }
 }
 
-// Graceful shutdown on SIGINT (Ctrl+C)
+// Process lifecycle 
 process.on('SIGINT', () => {
   console.log('');
   info('Shutting down...');
@@ -72,13 +71,11 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Handle SIGTERM
 process.on('SIGTERM', () => {
   cleanup();
   process.exit(0);
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err: Error) => {
   error(`Uncaught exception: ${err.message}`);
   if (err.stack) {
@@ -88,7 +85,6 @@ process.on('uncaughtException', (err: Error) => {
   process.exit(1);
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (reason: unknown) => {
   const message = reason instanceof Error ? reason.message : String(reason);
   error(`Unhandled rejection: ${message}`);

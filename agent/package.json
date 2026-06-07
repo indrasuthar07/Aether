@@ -1,11 +1,12 @@
 {
   "name": "@aether/agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "Aether terminal sharing agent",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -16,15 +17,14 @@
   },
   "dependencies": {
     "@roamhq/wrtc": "^0.10.0",
-    "chalk": "^5.6.2",
-    "console": "^0.7.2",
-    "crypto": "^1.0.1",
+    "chalk": "^4.1.2",
+    "nanoid": "^3.3.7",
     "node-pty": "^1.1.0",
-    "os": "^0.1.2",
-    "socket.io-client": "^4.8.3"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
+    "@types/ws": "^8.5.10",
     "ts-node": "^10.9.2"
   }
 }

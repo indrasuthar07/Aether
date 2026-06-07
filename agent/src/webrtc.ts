@@ -2,6 +2,7 @@ import wrtc from '@roamhq/wrtc';
 
 const { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate } = wrtc;
 
+// Public types 
 export interface RTCSessionDescriptionInit {
   type: 'offer' | 'answer' | 'pranswer' | 'rollback';
   sdp?: string;
@@ -21,32 +22,40 @@ export interface DataChannelEvents {
   onError?: (err: Error) => void;
 }
 
+export interface PeerConfig {
+  iceServers: Array<{ urls: string; username?: string; credential?: string }>;
+}
+
+// Public API for the agent-side peer connection.
 export interface AgentPeer {
-  pc: InstanceType<typeof RTCPeerConnection>;
-  dataChannel: ReturnType<InstanceType<typeof RTCPeerConnection>['createDataChannel']>;
   createOffer: () => Promise<RTCSessionDescriptionInit>;
   setRemoteDescription: (answer: RTCSessionDescriptionInit) => Promise<void>;
   addIceCandidate: (candidate: RTCIceCandidateInit) => Promise<void>;
   onIceCandidate: (callback: (candidate: RTCIceCandidateInit) => void) => void;
   setDataChannelEvents: (events: DataChannelEvents) => void;
+  sendData: (data: string) => void;
+  isDataChannelOpen: () => boolean;
   close: () => void;
 }
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-];
-
-export function createAgentPeer(): AgentPeer {
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+// Factory 
+export function createAgentPeer(peerConfig: PeerConfig): AgentPeer {
+  const pc = new RTCPeerConnection({ iceServers: peerConfig.iceServers });
   const dataChannel = pc.createDataChannel('terminal', { ordered: true });
 
   let remoteDescriptionSet = false;
   const bufferedCandidates: RTCIceCandidateInit[] = [];
   let iceCandidateCallback: ((candidate: RTCIceCandidateInit) => void) | null = null;
 
-  // Emit local ICE candidates to signaling
-  pc.onicecandidate = (event: { candidate: { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null; usernameFragment: string | null } | null }) => {
+  // ICE candidate forwarding 
+  pc.onicecandidate = (event: {
+    candidate: {
+      candidate: string;
+      sdpMid: string | null;
+      sdpMLineIndex: number | null;
+      usernameFragment: string | null;
+    } | null;
+  }) => {
     if (event.candidate && iceCandidateCallback) {
       iceCandidateCallback({
         candidate: event.candidate.candidate,
@@ -57,6 +66,7 @@ export function createAgentPeer(): AgentPeer {
     }
   };
 
+  // SDP negotiation 
   async function createOffer(): Promise<RTCSessionDescriptionInit> {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -71,7 +81,7 @@ export function createAgentPeer(): AgentPeer {
     await pc.setRemoteDescription(desc);
     remoteDescriptionSet = true;
 
-    // Flush buffered ICE candidates
+    // Flush ICE candidates that arrived before the remote description
     for (const candidate of bufferedCandidates) {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     }
@@ -86,6 +96,7 @@ export function createAgentPeer(): AgentPeer {
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
 
+  // Callbacks 
   function onIceCandidate(callback: (candidate: RTCIceCandidateInit) => void): void {
     iceCandidateCallback = callback;
   }
@@ -111,6 +122,22 @@ export function createAgentPeer(): AgentPeer {
     }
   }
 
+  // Data channel helpers 
+  function sendData(data: string): void {
+    try {
+      if (dataChannel.readyState === 'open') {
+        dataChannel.send(data);
+      }
+    } catch {
+      // DataChannel may have closed mid-send
+    }
+  }
+
+  function isDataChannelOpen(): boolean {
+    return dataChannel.readyState === 'open';
+  }
+
+  // Teardown 
   function close(): void {
     try {
       dataChannel.close();
@@ -125,13 +152,13 @@ export function createAgentPeer(): AgentPeer {
   }
 
   return {
-    pc,
-    dataChannel,
     createOffer,
     setRemoteDescription,
     addIceCandidate,
     onIceCandidate,
     setDataChannelEvents,
+    sendData,
+    isDataChannelOpen,
     close,
   };
 }

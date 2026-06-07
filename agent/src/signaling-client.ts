@@ -1,6 +1,8 @@
 import WebSocket from 'ws';
 import * as logger from './logger';
+import { config } from './config';
 
+// Types
 export interface SignalingMessage {
   type: string;
   payload: Record<string, unknown>;
@@ -11,24 +13,25 @@ type MessageHandler = (message: SignalingMessage) => void;
 export interface SignalingClient {
   send: (type: string, payload?: Record<string, unknown>) => void;
   onMessage: (callback: MessageHandler) => void;
+  onReconnected: (callback: () => void) => void;
+  onPermanentlyDisconnected: (callback: () => void) => void;
   close: () => void;
 }
 
-const MAX_RECONNECT_ATTEMPTS = 3;
-const BASE_DELAY_MS = 1000;
-
+// Factory 
 export function connectSignaling(): Promise<SignalingClient> {
-  const serverUrl = process.env['SERVER_URL'] || 'ws://localhost:3001';
-
   let ws: WebSocket;
-  let messageHandlers: MessageHandler[] = [];
+  const messageHandlers: MessageHandler[] = [];
+  const reconnectHandlers: Array<() => void> = [];
+  const disconnectHandlers: Array<() => void> = [];
   let reconnectAttempts = 0;
   let intentionallyClosed = false;
   let pendingMessages: Array<{ type: string; payload: Record<string, unknown> }> = [];
 
+  // Public methods 
   function send(type: string, payload: Record<string, unknown> = {}): void {
     const message = JSON.stringify({ type, payload });
-    if (ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(message);
     } else {
       pendingMessages.push({ type, payload });
@@ -39,15 +42,28 @@ export function connectSignaling(): Promise<SignalingClient> {
     messageHandlers.push(callback);
   }
 
+  function onReconnected(callback: () => void): void {
+    reconnectHandlers.push(callback);
+  }
+
+  function onPermanentlyDisconnected(callback: () => void): void {
+    disconnectHandlers.push(callback);
+  }
+
   function close(): void {
     intentionallyClosed = true;
-    messageHandlers = [];
+    messageHandlers.length = 0;
+    reconnectHandlers.length = 0;
+    disconnectHandlers.length = 0;
     pendingMessages = [];
-    if (ws) {
-      ws.close();
+    try {
+      ws?.close();
+    } catch {
+      // ignore
     }
   }
 
+  // Internal helpers 
   function flushPending(): void {
     const queued = [...pendingMessages];
     pendingMessages = [];
@@ -67,30 +83,16 @@ export function connectSignaling(): Promise<SignalingClient> {
     }
   }
 
-  function attemptReconnect(): void {
-    if (intentionallyClosed) return;
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      logger.error(`Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts`);
-      process.exit(1);
-      return;
-    }
-
-    const delay = BASE_DELAY_MS * Math.pow(2, reconnectAttempts);
-    reconnectAttempts++;
-    logger.warn(`Connection lost. Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
-
-    setTimeout(() => {
-      if (intentionallyClosed) return;
-      createSocket();
-    }, delay);
-  }
-
-  function createSocket(): void {
-    ws = new WebSocket(serverUrl);
+  function setupSocket(isReconnect: boolean): void {
+    ws = new WebSocket(config.SERVER_URL);
 
     ws.on('open', () => {
       reconnectAttempts = 0;
       flushPending();
+      if (isReconnect) {
+        logger.success('Reconnected to signaling server');
+        for (const cb of reconnectHandlers) cb();
+      }
     });
 
     ws.on('message', handleMessage);
@@ -106,34 +108,60 @@ export function connectSignaling(): Promise<SignalingClient> {
     });
   }
 
+  function attemptReconnect(): void {
+    if (intentionallyClosed) return;
+
+    if (reconnectAttempts >= config.MAX_RECONNECT_ATTEMPTS) {
+      logger.error(
+        `Failed to reconnect after ${config.MAX_RECONNECT_ATTEMPTS} attempts`,
+      );
+      // Notify session instead of calling process.exit
+      for (const cb of disconnectHandlers) cb();
+      return;
+    }
+
+    const delay = config.RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempts);
+    reconnectAttempts++;
+    logger.warn(
+      `Connection lost. Reconnecting in ${delay}ms ` +
+      `(attempt ${reconnectAttempts}/${config.MAX_RECONNECT_ATTEMPTS})...`,
+    );
+
+    setTimeout(() => {
+      if (intentionallyClosed) return;
+      setupSocket(true);
+    }, delay);
+  }
+
+  // Initial connection 
   return new Promise<SignalingClient>((resolve, reject) => {
-    ws = new WebSocket(serverUrl);
-
     const connectionTimeout = setTimeout(() => {
-      ws.close();
-      reject(new Error(`Connection to signaling server timed out: ${serverUrl}`));
-    }, 10000);
+      intentionallyClosed = true;
+      try {
+        ws?.close();
+      } catch {
+        // ignore
+      }
+      reject(new Error(
+        `Connection to signaling server timed out: ${config.SERVER_URL}`,
+      ));
+    }, config.CONNECTION_TIMEOUT_MS);
 
-    ws.on('open', () => {
+    // Use the unified setup path (not a reconnect)
+    setupSocket(false);
+
+    // Layer initial-connection-specific handlers on top
+    ws.once('open', () => {
       clearTimeout(connectionTimeout);
-      reconnectAttempts = 0;
-      flushPending();
-      resolve({ send, onMessage, close });
+      resolve({ send, onMessage, onReconnected, onPermanentlyDisconnected, close });
     });
 
-    ws.on('message', handleMessage);
-
-    ws.on('close', () => {
-      if (!intentionallyClosed) {
-        attemptReconnect();
-      }
-    });
-
-    ws.on('error', (err: Error) => {
+    ws.once('error', (err: Error) => {
       clearTimeout(connectionTimeout);
-      if (reconnectAttempts === 0 && !intentionallyClosed) {
-        reject(new Error(`Failed to connect to signaling server at ${serverUrl}: ${err.message}`));
-      }
+      intentionallyClosed = true; // Prevent reconnect on initial failure
+      reject(new Error(
+        `Failed to connect to signaling server at ${config.SERVER_URL}: ${err.message}`,
+      ));
     });
   });
 }

@@ -4,8 +4,10 @@ import type { SignalingClient, SignalingMessage } from './signaling-client';
 import { spawnPTY, resizePTY } from './pty';
 import { createAgentPeer } from './webrtc';
 import type { AgentPeer, RTCSessionDescriptionInit, RTCIceCandidateInit } from './webrtc';
+import { config } from './config';
 import * as logger from './logger';
 
+// Types 
 interface ResizeMessage {
   type: 'resize';
   cols: number;
@@ -22,6 +24,7 @@ function isResizeMessage(data: unknown): data is ResizeMessage {
   );
 }
 
+// Session state 
 interface SessionState {
   signaling: SignalingClient | null;
   pty: IPty | null;
@@ -36,13 +39,24 @@ const state: SessionState = {
   isCleaningUp: false,
 };
 
+let ptyDataHandle: { dispose(): void } | null = null;
+
 export function getSessionState(): Readonly<SessionState> {
   return state;
+}
+
+// Cleanup 
+function cleanupPtyListener(): void {
+  if (ptyDataHandle) {
+    ptyDataHandle.dispose();
+    ptyDataHandle = null;
+  }
 }
 
 export function cleanup(): void {
   if (state.isCleaningUp) return;
   state.isCleaningUp = true;
+  cleanupPtyListener();
 
   if (state.peer) {
     try {
@@ -74,18 +88,24 @@ export function cleanup(): void {
   state.isCleaningUp = false;
 }
 
+// Viewer connection setup 
 function setupViewerConnection(code: string): void {
   if (!state.signaling || !state.pty) return;
 
   const signaling = state.signaling;
   const ptyProcess = state.pty;
+  cleanupPtyListener();
+  if (state.peer) {
+    state.peer.close();
+    state.peer = null;
+  }
 
   logger.info('Viewer connected! Setting up WebRTC...');
 
-  const peer = createAgentPeer();
+  const peer = createAgentPeer({ iceServers: config.ICE_SERVERS });
   state.peer = peer;
 
-  // Send local ICE candidates to viewer via signaling
+  // Forward local ICE candidates to viewer via signaling
   peer.onIceCandidate((candidate) => {
     signaling.send('ice', { code, candidate });
   });
@@ -95,23 +115,24 @@ function setupViewerConnection(code: string): void {
     onOpen: () => {
       logger.success('DataChannel open — terminal is now shared!');
 
-      // Pipe PTY output → DataChannel
-      ptyProcess.onData((data: string) => {
-        try {
-          if (peer.dataChannel.readyState === 'open') {
-            peer.dataChannel.send(data);
-          }
-        } catch {
-          // DataChannel may have closed mid-send
-        }
+      // Dispose any previous listener, then register a fresh one
+      cleanupPtyListener();
+      ptyDataHandle = ptyProcess.onData((data: string) => {
+        peer.sendData(data);
       });
     },
 
     onMessage: (data: string) => {
+      // Size guard — reject oversized messages
+      if (data.length > config.MAX_INPUT_SIZE) {
+        logger.warn(`Rejected oversized input (${data.length} bytes)`);
+        return;
+      }
+      // Check for resize commands (JSON-encoded)
       try {
         const parsed: unknown = JSON.parse(data);
         if (isResizeMessage(parsed)) {
-          resizePTY(ptyProcess, parsed.cols, parsed.rows);
+          resizePTY(ptyProcess, parsed.cols, parsed.rows, config.MAX_COLS, config.MAX_ROWS);
           return;
         }
       } catch {
@@ -124,6 +145,7 @@ function setupViewerConnection(code: string): void {
 
     onClose: () => {
       logger.warn('Viewer disconnected.');
+      cleanupPtyListener();
       if (state.peer) {
         state.peer.close();
         state.peer = null;
@@ -148,6 +170,7 @@ function setupViewerConnection(code: string): void {
     });
 }
 
+// Session entrypoint 
 export async function startSession(code: string): Promise<void> {
   // 1. Connect to signaling server
   logger.info('Connecting to signaling server...');
@@ -168,15 +191,29 @@ export async function startSession(code: string): Promise<void> {
   signaling.send('register', { code });
   logger.success(`Session registered with code: ${code}`);
 
-  // 3. Spawn PTY
-  const ptyProcess = spawnPTY((_data: string) => {
-    // Initial data handler — data is forwarded once DataChannel is open
-    // This is a no-op until DataChannel wiring in setupViewerConnection
+  // 3. Handle reconnects — re-register so the server knows us
+  signaling.onReconnected(() => {
+    signaling.send('register', { code });
+    logger.success('Re-registered session after reconnect');
+  });
+
+  // 4. Handle permanent disconnect — clean up and exit
+  signaling.onPermanentlyDisconnected(() => {
+    logger.error('Permanently lost connection to signaling server');
+    cleanup();
+    process.exit(1);
+  });
+
+  // 5. Spawn PTY with exit detection
+  const ptyProcess = spawnPTY((exitInfo) => {
+    logger.warn(`Shell exited (code: ${exitInfo.exitCode})`);
+    cleanup();
+    process.exit(exitInfo.exitCode);
   });
   state.pty = ptyProcess;
   logger.success('Terminal spawned');
 
-  // 4. Handle signaling messages
+  // 6. Handle signaling messages
   signaling.onMessage((message: SignalingMessage) => {
     switch (message.type) {
       case 'viewer-joined': {
@@ -212,6 +249,7 @@ export async function startSession(code: string): Promise<void> {
 
       case 'peer-disconnected': {
         logger.warn('Peer disconnected from signaling');
+        cleanupPtyListener();
         if (state.peer) {
           state.peer.close();
           state.peer = null;
