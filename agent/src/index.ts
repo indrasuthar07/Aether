@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { banner, printcode, info, error } from './logger';
 import { createSessionCode } from './code';
 import { startSession, cleanup } from './session';
