@@ -4,6 +4,7 @@ import StatusBar, { type ConnectionStatus } from '../components/StatusBar';
 import TerminalView, { type TerminalViewHandle } from '../components/TerminalView';
 import { useSignaling } from '../hooks/useSignaling';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { Home, LogOut, AlertCircle } from 'lucide-react';
 
 export type MessageType =
   | 'register'
@@ -15,6 +16,7 @@ export type MessageType =
   | 'answer'
   | 'ice'
   | 'peer-disconnected';
+
 export interface SignalingMessage {
   type: MessageType;
   payload?: Record<string, unknown>;
@@ -157,14 +159,13 @@ function TerminalPage() {
   }, [cleanupWebRTC, navigate]);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#0a0a0a] overflow-hidden">
+    <div className="h-screen w-screen flex flex-col bg-[#0a0a0a] overflow-hidden font-sans antialiased">
       <StatusBar
         status={status}
         code={code || ''}
         onDisconnect={handleDisconnect}
       />
 
-      {/* Terminal area — offset by status bar height */}
       <div className="flex-1 mt-10 relative">
         <TerminalView
           ref={terminalViewRef}
@@ -172,53 +173,45 @@ function TerminalPage() {
           onResize={handleTerminalResize}
         />
 
-        {/* Session ended overlay */}
+        {/* Brand-Matched Session Ended Overlay */}
         {sessionEnded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm z-40">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-zinc-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
+          <div className="absolute inset-0 flex items-center justify-center bg-aether-bg/95 backdrop-blur-md z-40">
+            <div className="text-center max-w-md mx-auto px-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-blue-100 text-blue-900 flex items-center justify-center shadow-sm">
+                <LogOut size={28} strokeWidth={2.5} />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Session ended</h2>
-              <p className="text-zinc-400 mb-8">The host has disconnected.</p>
+              <h2 className="text-3xl font-bold text-aether-ink tracking-tight mb-3">Session ended</h2>
+              <p className="text-base text-aether-ink/70 font-medium mb-8 leading-relaxed">
+                The host has closed the connection. Your session has been safely disconnected.
+              </p>
               <button
                 onClick={() => navigate('/')}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/25 transition-all hover:scale-105 active:scale-100"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-900 text-white px-8 py-3.5 hover:bg-blue-800 transition-colors shadow-lg"
               >
+                <Home className="w-5 h-5" />
                 Back to Home
               </button>
             </div>
           </div>
         )}
 
-        {/* Error overlay */}
+        {/* Brand-Matched Error Overlay */}
         {status === 'error' && !sessionEnded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm z-40">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
+          <div className="absolute inset-0 flex items-center justify-center bg-aether-bg/95 backdrop-blur-md z-40">
+            <div className="text-center max-w-md mx-auto px-6 animate-in fade-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shadow-sm">
+                <AlertCircle size={28} strokeWidth={2.5} />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Session not found</h2>
-              <p className="text-zinc-400 mb-8">No active session with code <span className="font-mono text-zinc-300">{code}</span></p>
+              <h2 className="text-3xl font-bold text-aether-ink tracking-tight mb-3">Session not found</h2>
+              <p className="text-base text-aether-ink/70 font-medium mb-8 leading-relaxed">
+                We couldn&apos;t find an active terminal session matching code <br />
+                <span className="inline-block mt-3 bg-black/5 px-3 py-1 rounded-md text-aether-ink font-mono text-lg border border-black/5 tracking-widest">
+                  {code}
+                </span>
+              </p>
               <button
-                onClick={() => navigate('/')}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/25 transition-all hover:scale-105 active:scale-100"
+                onClick={() => navigate('/term')}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-900 text-white px-8 py-3.5 hover:bg-blue-800 transition-colors shadow-lg"
               >
                 Try Another Code
               </button>

@@ -94,8 +94,6 @@ function CodeInput({ onChange, value = '' }: CodeInputProps) {
         input.value = char;
       }
     }
-
-    // Focus the input after the last pasted character
     const focusIndex = Math.min(chars.length, CODE_LENGTH - 1);
     inputsRef.current[focusIndex]?.focus();
 
@@ -112,7 +110,6 @@ function CodeInput({ onChange, value = '' }: CodeInputProps) {
           inputMode="numeric"
           pattern="[0-9]"
           maxLength={1}
-          // I replaced 'code-input' with these Tailwind classes
           className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold text-aether-ink bg-white border border-black/10 rounded-xl shadow-sm focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all selection:bg-blue-100"
           onChange={(e) => handleChange(i, e)}
           onKeyDown={(e) => handleKeyDown(i, e)}

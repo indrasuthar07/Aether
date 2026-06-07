@@ -1,4 +1,7 @@
-type ConnectionStatus = 'connecting' | 'waiting' | 'live' | 'disconnected' | 'error';
+import { type ReactNode } from 'react';
+import { Loader2, Clock, XCircle, AlertCircle, Power } from 'lucide-react';
+
+export type ConnectionStatus = 'connecting' | 'waiting' | 'live' | 'disconnected' | 'error';
 
 interface StatusBarProps {
   status: ConnectionStatus;
@@ -6,31 +9,36 @@ interface StatusBarProps {
   onDisconnect: () => void;
 }
 
-const STATUS_CONFIG: Record<ConnectionStatus, { color: string; dotClass: string; label: string }> = {
+const STATUS_CONFIG: Record<ConnectionStatus, { color: string; icon: ReactNode; label: string }> = {
   connecting: {
-    color: 'bg-yellow-400',
-    dotClass: '',
+    color: 'text-blue-600',
+    icon: <Loader2 size={14} className="animate-spin" />,
     label: 'Connecting...'
   },
   waiting: {
-    color: 'bg-blue-400',
-    dotClass: '',
-    label: 'Waiting for agent...'
+    color: 'text-blue-900',
+    icon: <Clock size={14} />,
+    label: 'Waiting for host...'
   },
   live: {
-    color: 'bg-emerald-400',
-    dotClass: 'animate-pulse-dot',
-    label: 'Live'
+    color: 'text-emerald-600',
+    icon: (
+      <span className="relative flex h-2.5 w-2.5 ml-0.5 mr-1">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+      </span>
+    ),
+    label: 'Active'
   },
   disconnected: {
-    color: 'bg-zinc-400',
-    dotClass: '',
+    color: 'text-aether-ink/40',
+    icon: <XCircle size={14} />,
     label: 'Disconnected'
   },
   error: {
-    color: 'bg-red-400',
-    dotClass: '',
-    label: 'Connection error'
+    color: 'text-red-500',
+    icon: <AlertCircle size={14} />,
+    label: 'Connection Error'
   }
 };
 
@@ -38,30 +46,38 @@ function StatusBar({ status, code, onDisconnect }: StatusBarProps) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-10 flex items-center justify-between px-4 bg-zinc-900/80 backdrop-blur-md border-b border-zinc-800">
-      {/* Left side: status indicator */}
+    <div className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-6 bg-black/80 backdrop-blur-md border-b border-white/30 shadow-sm font-sans antialiased">
+      
+      {/* Status Indicator */}
       <div className="flex items-center gap-2.5">
-        <span
-          className={`inline-block w-2.5 h-2.5 rounded-full ${config.color} ${config.dotClass}`}
-          aria-hidden="true"
-        />
-        <span className="text-sm font-medium text-zinc-300">
+        <div className={`flex items-center justify-center ${config.color}`}>
+          {config.icon}
+        </div>
+        <span className="text-[13px] font-semibold text-white/80 tracking-wide">
           {config.label}
         </span>
       </div>
 
-      {/* Right side: code badge + disconnect */}
-      <div className="flex items-center gap-3">
-        <span className="inline-flex items-center px-3 py-1 rounded-md bg-zinc-800 border border-zinc-700 text-xs font-mono font-semibold text-zinc-300 tracking-wider">
-          {code.split('').join(' ')}
-        </span>
+      <div className="flex items-center gap-4"> 
+        {/* Sleek Code Badge */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest hidden sm:inline-block">
+            Session Code : {code}
+          </span>
+        </div>
 
+        {/* Disconnect*/}
+        {status === 'live' && (
+          <div className="h-4 w-px bg-black/10 mx-1 hidden sm:block" />
+        )}
+        
         {status === 'live' && (
           <button
             onClick={onDisconnect}
-            className="px-3 py-1 text-xs font-medium rounded-md bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-400/50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold rounded-full text-white/80 hover:text-red-600 transition-colors"
           >
-            Disconnect
+            <Power size={14} strokeWidth={2.5} />
+            <span className="hidden sm:inline-block">Disconnect</span>
           </button>
         )}
       </div>
@@ -70,4 +86,3 @@ function StatusBar({ status, code, onDisconnect }: StatusBarProps) {
 }
 
 export default StatusBar;
-export type { ConnectionStatus };
