@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Check, Copy, Download, Icon, Share2, Terminal as TerminalIcon } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, Download, Share2, Terminal as TerminalIcon } from "lucide-react";
 import TerminalMockup from "../components/TerminalMockup";
 
 const Github = ({ size = 24, className = "" }) => (
@@ -44,15 +44,15 @@ const steps = [
 
 export function Hero() {
   const [copied, setCopied] = useState(false);
-  const [selectedOS, setSelectedOS] = useState("Windows");
+  const [selectedOS, setSelectedOS] = useState<keyof typeof installCommands>("Windows");
 
   const installCommands = {
     Windows: "iwr -useb aether.sh/install-win.ps1 | iex",
     macOS: "curl -fsSL aether.sh/install-mac | sh",
     Linux: "curl -fsSL aether.sh/install-linux | sh",
-  };
+  } as const;
 
-  const cmd = installCommands[selectedOS]
+  const cmd = installCommands[selectedOS];
 
   return (
     <section className="pt-40 pb-20 px-6">
@@ -73,7 +73,7 @@ export function Hero() {
           <div className="rounded-xl overflow-hidden bg-aether-terminal shadow-xl border border-white/5">
             
             <div className="flex items-center gap-6 px-5 pt-4 pb-3">
-              {Object.keys(installCommands).map((os) => (
+              {(Object.keys(installCommands) as Array<keyof typeof installCommands>).map((os) => (
                 <button
                   key={os}
                   onClick={() => setSelectedOS(os)}

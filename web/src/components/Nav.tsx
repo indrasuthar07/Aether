@@ -1,10 +1,11 @@
+import { Link } from 'react-router-dom';
 export default function Nav() {
   return (
     <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl">
       <div className="flex items-center justify-between gap-2 rounded-full border border-black/10 bg-aether-bg/85 backdrop-blur-md pl-5 pr-2 py-2 shadow-sm">
-        <a href="#" className="text-blue-900 font-semibold tracking-tight lowercase text-lg">
+        <Link to="/" className="text-blue-900 font-semibold tracking-tight lowercase text-lg">
           aether
-        </a>
+        </Link>
 
         <div className="flex items-center gap-1">
           <a

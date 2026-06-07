@@ -1,19 +1,21 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import CodeInput from '../components/CodeInput';
+import { isValidSessionCode } from '../types';
 import { ArrowLeft, Shield, Zap, Activity, HelpCircle, ChevronDown, Loader2, Terminal } from 'lucide-react';
 
 function ConnectTerminal() {
   const [code, setCode] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState<string[]>([]);
   const navigate = useNavigate();
 
   const isComplete = code.length === 6;
 
   // Handles the simulated terminal handshake visual sequence
   const triggerConnectionSequence = useCallback(() => {
+    if (!isValidSessionCode(code)) return;
     setIsConnecting(true);
     setLogs(['> Initializing Aether peer handshake...']);
 
@@ -21,7 +23,7 @@ function ConnectTerminal() {
       { delay: 300, text: '> Locating signaling server...' },
       { delay: 600, text: '> Establishing direct WebRTC P2P tunnel...' },
       { delay: 900, text: '> Exchanging end-to-end E2EE keys...' },
-      { delay: 1200, text: '✓ Secure session verified. Redirecting...' }
+      { delay: 1200, text: '✓ Secure session verified. Redirecting...' },
     ];
 
     steps.forEach((step) => {
@@ -42,7 +44,7 @@ function ConnectTerminal() {
     }
   }, [isComplete, isConnecting, triggerConnectionSequence]);
 
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && isComplete && !isConnecting) {
       handleSubmit();
     }

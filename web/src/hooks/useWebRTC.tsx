@@ -1,22 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
-
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
-];
-
-type MessageType =
-  | 'register'
-  | 'join'
-  | 'viewer-joined'
-  | 'ready'
-  | 'not-found'
-  | 'offer'
-  | 'answer'
-  | 'ice'
-  | 'peer-disconnected';
-
-type SignalingSend = (type: MessageType, payload?: Record<string, unknown>) => void;
+import { ICE_SERVERS } from '../types';
+import type { SignalingSend } from '../types';
 
 interface UseWebRTCReturn {
   connectionState: RTCPeerConnectionState | 'new';
@@ -29,10 +13,14 @@ interface UseWebRTCReturn {
 
 export function useWebRTC(send: SignalingSend): UseWebRTCReturn {
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const sendRef = useRef<SignalingSend>(send);
   const [connectionState, setConnectionState] = useState<RTCPeerConnectionState | 'new'>('new');
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const iceCandidateBufferRef = useRef<RTCIceCandidateInit[]>([]);
   const remoteDescriptionSetRef = useRef<boolean>(false);
+
+  sendRef.current = send;
 
   const createPeerConnection = useCallback((): RTCPeerConnection => {
     // Cleanup any existing connection
@@ -49,17 +37,18 @@ export function useWebRTC(send: SignalingSend): UseWebRTCReturn {
 
     pc.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
       if (event.candidate) {
-        send('ice', { candidate: event.candidate.toJSON() });
+        sendRef.current('ice', { candidate: event.candidate.toJSON() });
       }
     });
 
     pc.addEventListener('datachannel', (event: RTCDataChannelEvent) => {
       const channel = event.channel;
+      dataChannelRef.current = channel;
       setDataChannel(channel);
     });
 
     return pc;
-  }, [send]);
+  }, []);
 
   const flushIceCandidates = useCallback(async () => {
     const pc = pcRef.current;
@@ -109,14 +98,17 @@ export function useWebRTC(send: SignalingSend): UseWebRTCReturn {
   }, []);
 
   const sendInput = useCallback((data: string) => {
-    if (dataChannel && dataChannel.readyState === 'open') {
-      dataChannel.send(data);
+    const dc = dataChannelRef.current;
+    if (dc && dc.readyState === 'open') {
+      dc.send(data);
     }
-  }, [dataChannel]);
+  }, []);
 
+  // Uses refs to avoid stale closure over dataChannel state
   const cleanup = useCallback(() => {
-    if (dataChannel) {
-      dataChannel.close();
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+      dataChannelRef.current = null;
     }
     if (pcRef.current) {
       pcRef.current.close();
@@ -126,7 +118,7 @@ export function useWebRTC(send: SignalingSend): UseWebRTCReturn {
     iceCandidateBufferRef.current = [];
     setDataChannel(null);
     setConnectionState('new');
-  }, [dataChannel]);
+  }, []);
 
   return {
     connectionState,
@@ -134,6 +126,6 @@ export function useWebRTC(send: SignalingSend): UseWebRTCReturn {
     handleOffer,
     handleIceCandidate,
     sendInput,
-    cleanup
+    cleanup,
   };
 }

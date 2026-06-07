@@ -4,23 +4,9 @@ import StatusBar, { type ConnectionStatus } from '../components/StatusBar';
 import TerminalView, { type TerminalViewHandle } from '../components/TerminalView';
 import { useSignaling } from '../hooks/useSignaling';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { isValidSessionCode } from '../types';
+import type { SignalingMessage } from '../types';
 import { Home, LogOut, AlertCircle } from 'lucide-react';
-
-export type MessageType =
-  | 'register'
-  | 'join'
-  | 'viewer-joined'
-  | 'ready'
-  | 'not-found'
-  | 'offer'
-  | 'answer'
-  | 'ice'
-  | 'peer-disconnected';
-
-export interface SignalingMessage {
-  type: MessageType;
-  payload?: Record<string, unknown>;
-}
 
 function TerminalPage() {
   const { code } = useParams<{ code: string }>();
@@ -29,6 +15,15 @@ function TerminalPage() {
   const [sessionEnded, setSessionEnded] = useState(false);
   const terminalViewRef = useRef<TerminalViewHandle>(null);
   const hasJoinedRef = useRef(false);
+  const statusRef = useRef<ConnectionStatus>(status);
+
+  statusRef.current = status;
+
+  useEffect(() => {
+    if (!isValidSessionCode(code)) {
+      navigate('/term', { replace: true });
+    }
+  }, [code, navigate]);
 
   const handleMessage = useCallback((message: SignalingMessage) => {
     switch (message.type) {
@@ -39,14 +34,14 @@ function TerminalPage() {
         setStatus('error');
         break;
       case 'offer': {
-        const offer = message.payload?.offer as RTCSessionDescriptionInit | undefined;
+        const offer = message.payload?.['offer'] as RTCSessionDescriptionInit | undefined;
         if (offer) {
           handleOfferRef.current(offer);
         }
         break;
       }
       case 'ice': {
-        const candidate = message.payload?.candidate as RTCIceCandidateInit | undefined;
+        const candidate = message.payload?.['candidate'] as RTCIceCandidateInit | undefined;
         if (candidate) {
           handleIceCandidateRef.current(candidate);
         }
@@ -81,7 +76,7 @@ function TerminalPage() {
 
   // Join the session once WS is open
   useEffect(() => {
-    if (readyState === WebSocket.OPEN && code && !hasJoinedRef.current) {
+    if (readyState === WebSocket.OPEN && isValidSessionCode(code) && !hasJoinedRef.current) {
       hasJoinedRef.current = true;
       send('join', { code });
     }
@@ -96,7 +91,7 @@ function TerminalPage() {
     };
 
     const handleChannelMessage = (event: MessageEvent) => {
-      const data = event.data;
+      const data: unknown = event.data;
       if (typeof data === 'string') {
         terminalViewRef.current?.write(data);
       } else if (data instanceof ArrayBuffer) {
@@ -112,7 +107,8 @@ function TerminalPage() {
     };
 
     const handleClose = () => {
-      if (status === 'live') {
+      // Use ref to avoid stale status in this closure
+      if (statusRef.current === 'live') {
         setStatus('disconnected');
         setSessionEnded(true);
       }
@@ -138,19 +134,17 @@ function TerminalPage() {
       dataChannel.removeEventListener('close', handleClose);
       dataChannel.removeEventListener('error', handleError);
     };
-  }, [dataChannel, status]);
+  }, [dataChannel]);
 
   // Terminal input → DataChannel
   const handleTerminalInput = useCallback((data: string) => {
     sendInput(data);
   }, [sendInput]);
 
-  // Terminal resize → DataChannel
+  // Terminal resize → DataChannel (uses sendInput for abstraction)
   const handleTerminalResize = useCallback((cols: number, rows: number) => {
-    if (dataChannel && dataChannel.readyState === 'open') {
-      dataChannel.send(JSON.stringify({ type: 'resize', cols, rows }));
-    }
-  }, [dataChannel]);
+    sendInput(JSON.stringify({ type: 'resize', cols, rows }));
+  }, [sendInput]);
 
   // Disconnect handler
   const handleDisconnect = useCallback(() => {

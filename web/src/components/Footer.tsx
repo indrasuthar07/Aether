@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 export default function Footer() {
   return (
     <footer className="bg-blue-900">
@@ -9,7 +10,7 @@ export default function Footer() {
           </div>
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-white/80">
             <a href="https://github.com/indrasuthar07/Aether" className="hover:text-white transition">GitHub</a>
-            <a href="/term" className="hover:text-white transition">Web Client</a>
+            <Link to="/term" className="hover:text-white transition">Web Client</Link>
             <a href="#" className="hover:text-white transition">aether.sh</a>
           </div>
         </div>
