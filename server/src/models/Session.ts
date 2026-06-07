@@ -12,7 +12,7 @@ const SessionSchema = new mongoose.Schema<ISession>({
   agentConnectedAt: { type: Date, required: true, default: Date.now },
   viewerConnectedAt: { type: Date },
   endedAt: { type: Date },
-  durationSeconds: { type: Number }
+  durationSeconds: { type: Number },
 });
 
 export const Session: Model<ISession> = mongoose.model<ISession>('Session', SessionSchema);

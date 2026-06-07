@@ -4,6 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { connectDatabase } from './db';
+import { closeAllRooms } from './room';
 import { healthRouter } from './routes/health';
 import { config, validateConfig } from './config';
 import { handleConnection } from './signaling';
@@ -13,8 +14,7 @@ import { createLogger } from './logger';
 
 const log = createLogger('server');
 
-// Express app
-
+// Express app 
 const app = express();
 
 app.use(
@@ -27,12 +27,10 @@ app.use(
 app.use(express.json());
 app.use(healthRouter);
 
-// HTTP server 
-
+// HTTP server
 const server = http.createServer(app);
 
-// Security infrastructure
-
+// Security infrastructure 
 const connectionManager = new ConnectionManager({
   maxPerIp: config.MAX_CONNECTIONS_PER_IP,
   maxGlobal: config.MAX_GLOBAL_CONNECTIONS,
@@ -43,11 +41,7 @@ const connectionRateLimiter = new RateLimiter(
   config.RATE_LIMIT_MAX_CONNECTIONS,
 );
 
-/**
- * Extract the client IP from an HTTP request.
- * Checks X-Forwarded-For first (for deployments behind a reverse
- * proxy / load balancer), then falls back to the raw socket address.
- */
+// Extract the client IP from an HTTP request.
 function extractIp(req: IncomingMessage): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
@@ -57,19 +51,14 @@ function extractIp(req: IncomingMessage): string {
   return req.socket.remoteAddress ?? 'unknown';
 }
 
-// WebSocket server
+// WebSocket server 
 const wsLog = createLogger('ws');
 
 const wss = new WebSocketServer({
   server,
   maxPayload: config.MAX_PAYLOAD_BYTES,
 
-  /**
-   * Origin validation for browser-based connections.
-   *
-   * - Connections with no Origin header (Node.js agents) are allowed.
-   * - Browser connections must come from a whitelisted origin.
-   */
+// Origin validation for browser-based connections.
   verifyClient: (info, callback) => {
     const origin = info.origin;
 
@@ -112,7 +101,7 @@ wss.on('connection', (ws, req) => {
 
   // Track the accepted connection (auto-releases on close)
   connectionManager.track(ip, ws);
-  
+
   // Hand off to signaling with the resolved IP for per-action rate limiting
   handleConnection(ws, ip);
 });
@@ -127,13 +116,14 @@ async function start(): Promise<void> {
     process.exit(1);
   }
 
-  // Connect to MongoDB (server works without it)
+  // Connect to MongoDB (optional — skips if MONGO_URI is not set)
   await connectDatabase();
 
   server.listen(config.PORT, () => {
     log.info('Server started', {
       port: config.PORT,
       logLevel: config.LOG_LEVEL,
+      roomTtlMs: config.ROOM_TTL_MS,
       maxRooms: config.MAX_ROOMS,
       maxConnectionsPerIp: config.MAX_CONNECTIONS_PER_IP,
       maxGlobalConnections: config.MAX_GLOBAL_CONNECTIONS,
@@ -148,16 +138,18 @@ start().catch((err) => {
   process.exit(1);
 });
 
-// Graceful shutdown
-
+// Graceful shutdown 
 function shutdown(signal: string): void {
   log.info('Shutdown signal received', { signal });
 
-  // Close all WebSocket clients
+  // 1. Close all rooms (clears TTL timers, notifies sockets)
+  closeAllRooms();
+  // 2. Close any remaining WebSocket clients (e.g., not yet in a room)
   wss.clients.forEach((client) => {
     client.close(1001, 'Server shutting down');
   });
 
+  // 3. Shut down transport
   wss.close(() => {
     server.close(() => {
       log.info('HTTP server closed');

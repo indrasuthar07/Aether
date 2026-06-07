@@ -3,19 +3,20 @@ import type { LogLevel } from './logger';
 
 dotenv.config();
 
-// Type definitions
+// Type definitions 
+
 export interface AppConfig {
   PORT: number;
   MONGO_URI: string;
   ALLOWED_ORIGINS: string[];
   LOG_LEVEL: LogLevel;
-
+  // Room lifecycle
+  ROOM_TTL_MS: number;
   // Security — connection limits
   MAX_ROOMS: number;
   MAX_CONNECTIONS_PER_IP: number;
   MAX_GLOBAL_CONNECTIONS: number;
   MAX_PAYLOAD_BYTES: number;
-
   // Security — rate limiting (per window)
   RATE_LIMIT_WINDOW_MS: number;
   RATE_LIMIT_MAX_CONNECTIONS: number;
@@ -23,7 +24,7 @@ export interface AppConfig {
   RATE_LIMIT_MAX_JOINS: number;
 }
 
-// Helpers
+// Helpers 
 
 function parseAllowedOrigins(raw: string | undefined): string[] {
   if (!raw || raw.trim() === '') {
@@ -35,8 +36,6 @@ function parseAllowedOrigins(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
-// Safe integer parser that falls back to `defaultValue` when the
-// input is missing, non-numeric, zero, or negative.
 function parseIntSafe(value: string | undefined, defaultValue: number): number {
   if (!value) return defaultValue;
   const parsed = parseInt(value, 10);
@@ -55,12 +54,16 @@ function parseLogLevel(raw: string | undefined): LogLevel {
 }
 
 // Exported config singleton 
-
 export const config: AppConfig = {
   PORT: parseIntSafe(process.env['PORT'], 3001),
-  MONGO_URI: process.env['MONGO_URI'] ?? 'mongodb://localhost:27017/aether',
-  ALLOWED_ORIGINS: parseAllowedOrigins(process.env['ALLOWED_ORIGINS']),
   LOG_LEVEL: parseLogLevel(process.env['LOG_LEVEL']),
+  // Database — only connects if explicitly provided
+  MONGO_URI: process.env['MONGO_URI'] ?? '',
+
+  ALLOWED_ORIGINS: parseAllowedOrigins(process.env['ALLOWED_ORIGINS']),
+
+  // Room lifecycle
+  ROOM_TTL_MS: parseIntSafe(process.env['ROOM_TTL_MS'], 300_000), // 5 minutes
 
   // Connection limits
   MAX_ROOMS: parseIntSafe(process.env['MAX_ROOMS'], 500),
@@ -81,6 +84,9 @@ export function validateConfig(cfg: AppConfig): void {
 
   if (cfg.PORT < 1 || cfg.PORT > 65535) {
     errors.push(`PORT must be between 1 and 65535 (got ${cfg.PORT})`);
+  }
+  if (cfg.ROOM_TTL_MS < 10_000) {
+    errors.push(`ROOM_TTL_MS must be >= 10000ms (got ${cfg.ROOM_TTL_MS})`);
   }
 
   if (cfg.MAX_ROOMS < 1) {

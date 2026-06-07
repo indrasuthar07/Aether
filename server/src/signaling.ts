@@ -1,9 +1,18 @@
 import { WebSocket } from 'ws';
-import { rooms, createRoom, removeRoom } from './room';
+import {
+  rooms,
+  createRoom,
+  removeRoom,
+  findRoomBySocket,
+  setRoomViewer,
+  clearRoomViewer,
+  refreshRoomTTL,
+} from './room';
 import { isValidSessionCode, sanitizePayload, RELAY_SCHEMAS } from './validation';
 import { RateLimiter } from './rate-limiter';
 import { config } from './config';
 import { createLogger } from './logger';
+
 const log = createLogger('signaling');
 
 // Types 
@@ -39,40 +48,14 @@ const joinLimiter = new RateLimiter(
 );
 
 // Helpers 
-
-function findRoomBySocket(ws: WebSocket): { room: ReturnType<typeof rooms.get>; role: 'agent' | 'viewer' } | null {
-  for (const room of rooms.values()) {
-    if (room.agentSocket === ws) {
-      return { room, role: 'agent' };
-    }
-    if (room.viewerSocket === ws) {
-      return { room, role: 'viewer' };
-    }
-  }
-  return null;
-}
-
-// Send a typed JSON message to a WebSocket if it's still open. 
 function sendMessage(ws: WebSocket, message: SignalingMessage): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(message));
   }
 }
 
-// Convenience - send a structured error back to the client. 
 function sendError(ws: WebSocket, message: string): void {
   sendMessage(ws, { type: 'error', payload: { message } });
-}
-
-// Get the peer socket (agent ↔ viewer) within the same room. 
-function getPeer(ws: WebSocket): WebSocket | null {
-  const result = findRoomBySocket(ws);
-  if (!result || !result.room) return null;
-
-  if (result.role === 'agent') {
-    return result.room.viewerSocket;
-  }
-  return result.room.agentSocket;
 }
 
 // Connection handler 
@@ -115,7 +98,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
         const code = message.payload?.['code'];
 
         if (!isValidSessionCode(code)) {
-          log.warn('Invalid session code on register', { ip, code: typeof code === 'string' ? code.slice(0, 20) : 'non-string' });
+          log.warn('Invalid session code on register', { ip, rawCode: String(message.payload?.['code']).slice(0, 20) });
           sendError(ws, 'Invalid session code: must be exactly 6 digits');
           return;
         }
@@ -142,7 +125,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
         const code = message.payload?.['code'];
 
         if (!isValidSessionCode(code)) {
-          log.warn('Invalid session code on join', { ip, code: typeof code === 'string' ? code.slice(0, 20) : 'non-string' });
+          log.warn('Invalid session code on join', { ip, rawCode: String(message.payload?.['code']).slice(0, 20) });
           sendError(ws, 'Invalid session code: must be exactly 6 digits');
           return;
         }
@@ -160,7 +143,8 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
-        room.viewerSocket = ws;
+        // Register viewer via room module (handles socket index + TTL refresh)
+        setRoomViewer(code, ws);
         log.info('Viewer joined room', { code, ip });
 
         // Notify agent that a viewer has joined
@@ -177,7 +161,6 @@ export function handleConnection(ws: WebSocket, ip: string): void {
       case 'ice': {
         const schema = RELAY_SCHEMAS[message.type];
         if (!schema) {
-          // Guard against future schema omissions
           sendError(ws, 'Unknown relay type');
           return;
         }
@@ -189,13 +172,23 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
-        const peer = getPeer(ws);
+        // O(1) lookup via socket reverse index
+        const result = findRoomBySocket(ws);
+        if (!result) {
+          log.warn('No room found for relay', { ip, type: message.type });
+          return;
+        }
+
+        const peer = result.role === 'agent'
+          ? result.room.viewerSocket
+          : result.room.agentSocket;
+
         if (peer) {
-          // Forward the sanitized (whitelist-filtered) payload only
           sendMessage(peer, { type: message.type, payload: sanitizedPayload });
-          log.debug('Relayed message', { ip, type: message.type });
+          refreshRoomTTL(result.room.code);
+          log.debug('Relayed message', { ip, type: message.type, code: result.room.code });
         } else {
-          log.warn('No peer found for relay', { ip, type: message.type });
+          log.warn('No peer found for relay', { ip, type: message.type, code: result.room.code });
         }
         break;
       }
@@ -213,7 +206,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
     log.debug('WebSocket closed', { ip });
 
     const result = findRoomBySocket(ws);
-    if (!result || !result.room) return;
+    if (!result) return;
 
     const { room, role } = result;
     const code = room.code;
@@ -233,7 +226,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
       removeRoom(code);
       log.info('Agent disconnected, room removed', { code, ip });
     } else {
-      room.viewerSocket = null;
+      clearRoomViewer(code);
       log.info('Viewer disconnected from room', { code, ip });
     }
   });
