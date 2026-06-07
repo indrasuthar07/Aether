@@ -1,178 +1,191 @@
-import {useState, useCallback} from 'react';
-import {useNavigate} from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import CodeInput from '../components/CodeInput';
+import { ArrowLeft, Shield, Zap, Activity, HelpCircle, ChevronDown, Loader2, Terminal } from 'lucide-react';
 
 function ConnectTerminal() {
   const [code, setCode] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [logs, setLogs] = useState([]);
   const navigate = useNavigate();
 
   const isComplete = code.length === 6;
 
-  const handleSubmit = useCallback(() => {
-    if (isComplete) {
+  // Handles the simulated terminal handshake visual sequence
+  const triggerConnectionSequence = useCallback(() => {
+    setIsConnecting(true);
+    setLogs(['> Initializing Aether peer handshake...']);
+
+    const steps = [
+      { delay: 300, text: '> Locating signaling server...' },
+      { delay: 600, text: '> Establishing direct WebRTC P2P tunnel...' },
+      { delay: 900, text: '> Exchanging end-to-end E2EE keys...' },
+      { delay: 1200, text: '✓ Secure session verified. Redirecting...' }
+    ];
+
+    steps.forEach((step) => {
+      setTimeout(() => {
+        setLogs((prev) => [...prev, step.text]);
+      }, step.delay);
+    });
+
+    // Final redirection after logs finish printing
+    setTimeout(() => {
       navigate(`/term/${code}`);
+    }, 1500);
+  }, [code, navigate]);
+
+  const handleSubmit = useCallback(() => {
+    if (isComplete && !isConnecting) {
+      triggerConnectionSequence();
     }
-    }, [code, isComplete, navigate]);
+  }, [isComplete, isConnecting, triggerConnectionSequence]);
 
-const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-  if (e.key === 'Enter' && isComplete) {
-    handleSubmit();
-  }
-}, [isComplete, handleSubmit]);
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && isComplete && !isConnecting) {
+      handleSubmit();
+    }
+  }, [isComplete, isConnecting, handleSubmit]);
 
-return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
-      {/* Hero section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pb-16">
-        {/* Glow effect behind hero */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Terminal icon */}
-        <div className="mb-8 relative">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <svg
-              className="w-8 h-8 text-zinc-950"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-center mb-4 leading-tight">
-          <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-            Share your terminal
-          </span>
-          <br />
-          <span className="text-white">instantly</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-zinc-400 text-lg sm:text-xl text-center max-w-md mb-12">
-          No install for viewers. Just a 6-digit code.
-        </p>
-
-        {/* Code input */}
-        <div className="mb-6" onKeyDown={handleKeyDown}>
-          <CodeInput onChange={setCode} />
-        </div>
-
-        {/* Connect button */}
-        <button
-          onClick={handleSubmit}
-          disabled={!isComplete}
-          className={`
-            relative px-8 py-3 rounded-xl font-semibold text-base
-            transition-all duration-200 ease-out
-            ${isComplete
-              ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-105 active:scale-100'
-              : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-            }
-          `}
+  return (
+    <div className="min-h-screen font-sans antialiased bg-aether-bg flex flex-col relative selection:bg-blue-900 selection:text-white">
+      
+      <nav className="absolute top-0 left-0 w-full p-6 sm:p-8 flex justify-between items-center z-10">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 text-aether-ink/60 hover:text-blue-900 font-semibold text-sm transition-colors"
         >
-          {isComplete && (
-            <span className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-0 hover:opacity-20 transition-opacity" />
+          <ArrowLeft size={16} strokeWidth={2.5} />
+          Back to home
+        </Link>
+      </nav>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-20 z-0">
+        <div className="w-full max-w-[440px] bg-white rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-blue-900/5 border border-black/[0.04] relative overflow-hidden transition-all duration-300">
+          
+
+          <div className={`absolute top-0 left-0 w-full h-1.5 transition-all duration-500 bg-gradient-to-r from-blue-900 via-blue-600 to-blue-900 ${isConnecting ? 'animate-pulse scale-y-120' : 'opacity-80'}`} />
+
+          {/* Conditional Screen Transition: Show input form OR dynamic connection terminal */}
+          {!isConnecting ? (
+            <div 
+              className="animate-in fade-in zoom-in-95 duration-200"
+              onKeyDown={handleKeyDown}
+            >
+              {/* Header */}
+              <div className="flex flex-col items-center text-center mb-8 mt-2">
+                <div className="w-14 h-14 rounded-2xl text-blue-900 flex items-center justify-center mb-6 shadow-inner">
+                  <Activity size={28} strokeWidth={2.5} />
+                </div>
+                
+                <h1 className="text-3xl font-bold tracking-tight text-aether-ink mb-3">
+                  Join a session
+                </h1>
+                <p className="text-[14px] sm:text-[15px] text-aether-ink/60 font-medium leading-relaxed px-2">
+                  Enter the 6-digit session code generated by the host to lock into their environment.
+                </p>
+              </div>
+
+              {/* Input Area */}
+              <div className="flex justify-center mb-8">
+                <CodeInput value={code} onChange={setCode} />
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleSubmit}
+                disabled={!isComplete}
+                className={`
+                  w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-[15px] transition-all duration-300 ease-out
+                  ${isComplete
+                    ? 'bg-blue-900 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-800 hover:-translate-y-0.5 active:translate-y-0'
+                    : 'bg-black/5 text-aether-ink/30 cursor-not-allowed'
+                  }
+                `}
+              >
+                <Terminal size={18} strokeWidth={2.5} />
+                Connect to Terminal
+              </button>
+
+              <div className="h-6 mt-3 flex items-center justify-center">
+                {isComplete && (
+                  <p className="text-[13px] text-blue-900/60 font-semibold animate-pulse tracking-wide">
+                    Press Enter to connect
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Live Terminal Handshake Output Screen */
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 mt-2">
+              <div className="flex flex-col items-center text-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-blue-900 text-white flex items-center justify-center mb-4 shadow-lg shadow-blue-900/20">
+                  <Loader2 size={22} className="animate-spin" />
+                </div>
+                <h2 className="text-xl font-bold text-aether-ink">Connecting to Session</h2>
+                <p className="text-xs text-aether-ink/50 font-medium mt-1">Establishing secure WebRTC pipeline</p>
+              </div>
+
+              {/* Simulated Console Logs box */}
+              <div className="bg-zinc-950 rounded-xl p-4 font-mono text-[12px] text-zinc-400 min-h-[140px] flex flex-col gap-1.5 shadow-inner border border-white/5 tracking-normal text-left">
+                {logs.map((log, index) => (
+                  <div 
+                    key={index} 
+                    className={`animate-in fade-in slide-in-from-left-1 duration-200 ${
+                      log.startsWith('✓') ? 'text-emerald-400 font-semibold' : ''
+                    }`}
+                  >
+                    {log}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-          Connect
-        </button>
 
-        {/* Keyboard hint */}
-        {isComplete && (
-          <p className="mt-3 text-xs text-zinc-500 animate-pulse">
-            Press Enter to connect
-          </p>
-        )}
-      </main>
-
-      {/* How it works */}
-      <section className="px-4 pb-20">
-        <h2 className="text-center text-xl font-semibold text-zinc-300 mb-10">
-          How it works
-        </h2>
-
-        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {/* Step 1 */}
-          <div className="group relative rounded-2xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 p-6 hover:border-zinc-700 transition-colors">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
-                1
-              </span>
-              <h3 className="font-semibold text-white">Install the agent</h3>
+          {/* Help Accordion */}
+          {!isConnecting && (
+            <div className="mt-4 border-t border-black/5 pt-4">
+              <button 
+                onClick={() => setShowHelp(!showHelp)}
+                className="w-full flex items-center justify-between text-[13px] font-semibold text-aether-ink/50 hover:text-blue-900 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <HelpCircle size={14} />
+                  Where do I find my code?
+                </div>
+                <ChevronDown 
+                  size={14} 
+                  className={`transition-transform duration-300 ${showHelp ? 'rotate-180' : ''}`} 
+                />
+              </button>
+              
+              <div 
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  showHelp ? 'max-h-28 opacity-100 mt-3' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <p className="text-[13px] text-aether-ink/60 leading-relaxed bg-black/5 rounded-lg p-3">
+                  Ask the host to execute <code className="font-mono font-semibold text-blue-900 px-1 rounded">aether share</code> inside their command line interface to generate an 6-digit encrypted authentication PIN.
+                </p>
+              </div>
             </div>
-            <p className="text-zinc-400 text-sm mb-3">
-              Install the Termlink CLI agent globally with npm.
-            </p>
-            <code className="block px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-emerald-400 text-xs font-mono">
-              npm install -g termlink
-            </code>
+          )}
+
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-[13px] font-semibold text-aether-ink/50">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm">
+            <Shield size={14} className="text-blue-900" />
+            <span>End-to-end encrypted</span>
           </div>
-
-          {/* Step 2 */}
-          <div className="group relative rounded-2xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 p-6 hover:border-zinc-700 transition-colors">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-sm font-bold">
-                2
-              </span>
-              <h3 className="font-semibold text-white">Run termlink</h3>
-            </div>
-            <p className="text-zinc-400 text-sm mb-3">
-              Start sharing your terminal session with one command.
-            </p>
-            <code className="block px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-cyan-400 text-xs font-mono">
-              termlink
-            </code>
-          </div>
-
-          {/* Step 3 */}
-          <div className="group relative rounded-2xl bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 p-6 hover:border-zinc-700 transition-colors">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
-                3
-              </span>
-              <h3 className="font-semibold text-white">Share the code</h3>
-            </div>
-            <p className="text-zinc-400 text-sm mb-3">
-              Your viewer opens{' '}
-              <span className="text-emerald-400 font-medium">termlink.app</span>{' '}
-              and enters the 6-digit code.
-            </p>
-            <div className="flex gap-1.5 justify-center">
-              {['4', '2', '0', '1', '3', '7'].map((d, i) => (
-                <span
-                  key={i}
-                  className="w-7 h-9 rounded-md bg-zinc-950 border border-zinc-800 flex items-center justify-center text-sm font-mono font-bold text-white"
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shadow-sm">
+            <Zap size={14} className="text-blue-900" />
+            <span>Zero configuration</span>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="pb-8 text-center">
-        <p className="text-zinc-600 text-xs flex items-center justify-center gap-2">
-          <span>Built with</span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-medium">
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            WebRTC
-          </span>
-          <span>&</span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-medium">
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3" />
-            </svg>
-            xterm.js
-          </span>
-        </p>
-      </footer>
+      </main>
     </div>
   );
 }

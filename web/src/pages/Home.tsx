@@ -184,7 +184,7 @@ export function Cta() {
             Open Web Terminal
           </a>
           <a
-            href="#"
+            href="https://github.com/indrasuthar07/Aether"
             className="w-full sm:w-auto inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 text-white font-bold px-8 py-3.5 hover:bg-white/10 transition-colors gap-2"
           >
             <Github className="w-5 h-5" />

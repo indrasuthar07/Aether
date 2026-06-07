@@ -103,7 +103,7 @@ function CodeInput({ onChange, value = '' }: CodeInputProps) {
   }, [emitChange]);
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex items-center justify-center gap-2 sm:gap-3 w-full">
       {Array.from({ length: CODE_LENGTH }, (_, i) => (
         <input
           key={i}
@@ -112,7 +112,8 @@ function CodeInput({ onChange, value = '' }: CodeInputProps) {
           inputMode="numeric"
           pattern="[0-9]"
           maxLength={1}
-          className="code-input"
+          // I replaced 'code-input' with these Tailwind classes
+          className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold text-aether-ink bg-white border border-black/10 rounded-xl shadow-sm focus:outline-none focus:border-blue-900 focus:ring-2 focus:ring-blue-900/20 transition-all selection:bg-blue-100"
           onChange={(e) => handleChange(i, e)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}

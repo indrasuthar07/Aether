@@ -1,23 +1,43 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Home, ArrowLeft, Terminal } from 'lucide-react';
 
 function NotFound() {
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center px-4">
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[300px] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-      <h1 className="text-8xl sm:text-9xl font-bold mb-4">
-        <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-          404
-        </span>
-      </h1>
-      <p className="text-xl text-zinc-400 mb-2">Page not found</p>
-      <p className="text-sm text-zinc-500 mb-10">The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
-      <Link
-        to="/"
-        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/25 transition-all hover:scale-105 active:scale-100"
-      >
-        Go Home
-      </Link>
-    </div>
+    <main className="min-h-screen bg-aether-bg font-sans antialiased flex flex-col items-center justify-center px-6">
+      <div className="max-w-md mx-auto text-center">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-blue-900 mb-6">
+          <Terminal size={28} strokeWidth={2.5} />
+        </div>
+
+        <p className="text-6xl font-bold tracking-[0.2em] text-blue-900 uppercase mb-4">
+          Error 404
+        </p>
+
+        <p className="text-base sm:text-lg text-aether-ink/70 leading-relaxed font-medium mb-12">
+          The page or terminal session you are looking for doesn&apos;t exist, has been moved, or you entered the wrong address.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full border border-aether-ink/10 bg-transparent text-aether-ink font-bold px-8 py-3.5 hover:bg-aether-ink/5 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Go Back
+          </button>
+          
+          <Link
+            to="/"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-900 text-white font-bold px-8 py-3.5 hover:bg-blue-800 transition-colors shadow-lg"
+          >
+            <Home className="w-5 h-5" />
+            Back to Home
+          </Link>
+        </div>
+        
+      </div>
+    </main>
   );
 }
 
