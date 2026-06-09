@@ -47,9 +47,9 @@ export function Hero() {
   const [selectedOS, setSelectedOS] = useState<keyof typeof installCommands>("Windows");
 
   const installCommands = {
-    Windows: "iwr -useb aether.sh/install-win.ps1 | iex",
-    macOS: "curl -fsSL aether.sh/install-mac | sh",
-    Linux: "curl -fsSL aether.sh/install-linux | sh",
+    Windows: "npm install -g aether-cli-agent",
+    macOS: "coming soon for mac ...",
+    Linux: "coming soon for linux ...",
   } as const;
 
   const cmd = installCommands[selectedOS];
