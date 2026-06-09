@@ -43,8 +43,8 @@ function parseIceServers(raw: string | undefined): AgentConfig['ICE_SERVERS'] {
 
 // Exported config singleton 
 export const config: AgentConfig = {
-  SERVER_URL: process.env['SERVER_URL'] || 'ws://localhost:3001',
-  WEB_URL: process.env['WEB_URL'] || 'https://aether.vercel.app',
+  SERVER_URL: process.env['SERVER_URL'] || 'wss://aether-d8tj.onrender.com',
+  WEB_URL: process.env['WEB_URL'] || 'https://useaether.vercel.app',
   ICE_SERVERS: parseIceServers(process.env['ICE_SERVERS']),
 
   MAX_INPUT_SIZE: parseIntSafe(process.env['MAX_INPUT_SIZE'], 4096),

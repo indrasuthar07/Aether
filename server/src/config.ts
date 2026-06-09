@@ -28,7 +28,7 @@ export interface AppConfig {
 
 function parseAllowedOrigins(raw: string | undefined): string[] {
   if (!raw || raw.trim() === '') {
-    return ['http://localhost:5173'];
+    return ['http://useaether.vercel.app'];
   }
   return raw
     .split(',')
