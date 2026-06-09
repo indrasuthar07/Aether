@@ -21,12 +21,12 @@ $ aether share
 ```
 
 ```
-A E T H E R                                                            
-   Secure terminal sharing                                    
+A E T H E R                                                          
+   Secure terminal sharing                                  
 
-  ℹ  Session code:   4 5 2 2 3 7
-  ℹ  Share URL:     https://aether.vercel.app/term/452237
-  ℹ  Give this code to anyone you want to share your terminal with.
+  >  Session code:   4 5 2 2 3 7
+  >  Share URL:     https://aether.vercel.app/term/452237
+  >  Give this code to anyone you want to share your terminal with.
 
      Connecting to signaling server...
   ✓  Connected to signaling server
@@ -78,14 +78,7 @@ Aether is a monorepo structured as three npm workspaces:
 | `agent/`  | CLI tool that shares your terminal | Node.js,`node-pty`, `@roamhq/wrtc`   |
 | `server/` | WebSocket signaling server         | Express 5,`ws`, MongoDB (optional)   |
 | `web/`    | Browser-based terminal viewer      | React 19, xterm.js 6, Tailwind CSS 4 |
-
-### Signaling Protocol
-
-All signaling messages are JSON over WebSocket with the envelope `{ type, payload }`:
-
-* **Session Setup:** `register` (Agent configures code), `join` (Viewer requests access), `ready` / `viewer-joined` / `not-found` (Server responses).
-* **WebRTC Handshake:** `offer`, `answer`, `ice` (Relayed directly between peers).
-* **Lifecycle:** `peer-disconnected`, `error`.           |
+|
 
 ### Data Channel Protocol
 
@@ -96,68 +89,50 @@ Once the P2P connection is established, all communication uses a single reliable
 | Agent → Viewer | Raw PTY output (text + ANSI escape sequences)                                     |
 | Viewer → Agent | Raw keystrokes,**or** `{ type: "resize", cols, rows }` for terminal resize events |
 
-
 ## Getting Started
 
 ### Prerequisites
 
-| Requirement              | Version | Notes                                 |
-| ------------------------ | ------- | ------------------------------------- |
-| Node.js                  | ≥ 22   | Required                              |
-| npm                      | ≥ 10   | Comes with Node.js 22                 |
-| MongoDB                  | Any     | Optional — server runs without it    |
-| Python + C++ build tools | Any     | Required by`node-pty` native bindings |
+* **Node.js ≥ 22** (includes npm ≥ 10)
+* **Python & C++ build tools** (Required by`node-pty` native bindings`)
+* **MongoDB** (Optional -server runs without it)
 
 **Setting up build tools:**
 
 ```bash
 # Windows
 npm install --global windows-build-tools
-# or install Visual Studio Build Tools manually
 
 # macOS
 xcode-select --install
 
-# Linux (Debian/Ubuntu)
+# Linux
 sudo apt install build-essential python3
 ```
 
 ### Installation
 
 ```bash
-# 1. Clone the repository
+# 1. Clone
 git clone https://github.com/indrasuthar07/Aether.git
 cd Aether
 
-# 2. Install all workspace dependencies
+# 2. Install 
 npm install
 
-# 3. Configure environment
+# 3. Configure 
 cp .env.example .env
-# Edit .env as needed
 ```
 
 ### Running Locally
 
-**Recommended (all-in-one):**
+**start each workspace individually:**
 
 ```bash
-# Start signaling server + web app concurrently
-npm run dev
-
-# In a separate terminal — start the agent
-npm run dev:agent
-```
-
-**Or start each workspace individually:**
-
-```bash
-npm run dev:server   # Signaling server → http://localhost:3001
-npm run dev:web      # Web app          → http://localhost:5173
+npm run dev:server   # Signaling server 
+npm run dev:web      # Web app          
 npm run dev:agent    # Agent CLI
 ```
-
----
 
 ## Usage
 
@@ -178,10 +153,10 @@ Aether will:
 
 ### Viewing a Terminal
 
-1. Open [http://localhost:5173](http://localhost:5173) (or the production URL)
+1. Open project URL
 2. Click **"Open Web Terminal"**
 3. Enter the 6-digit session code
-4. Done — you're in a live, interactive session
+4. Done - you're in a live, interactive session
 
 ### CLI Reference
 
@@ -256,52 +231,13 @@ Aether/
 └── tsconfig.base.json              # Shared TypeScript configuration
 ```
 
----
-
-## Configuration
-
-Copy `.env.example` to `.env` and configure as needed.
-
-### Server
-
-| Variable                 | Default                 | Description                                          |
-| ------------------------ | ----------------------- | ---------------------------------------------------- |
-| `PORT`                   | `3001`                  | HTTP/WebSocket server port                           |
-| `MONGO_URI`              | _(empty)_               | MongoDB connection string — optional                |
-| `ALLOWED_ORIGINS`        | `http://localhost:5173` | Comma-separated list of allowed CORS origins         |
-| `LOG_LEVEL`              | `info`                  | Log verbosity:`debug` · `info` · `warn` · `error` |
-| `ROOM_TTL_MS`            | `300000`                | Room inactivity TTL in milliseconds (default: 5 min) |
-| `MAX_ROOMS`              | `500`                   | Maximum number of concurrent rooms                   |
-| `MAX_CONNECTIONS_PER_IP` | `10`                    | Max concurrent WebSocket connections per IP          |
-| `MAX_GLOBAL_CONNECTIONS` | `500`                   | Max total concurrent WebSocket connections           |
-| `MAX_PAYLOAD_BYTES`      | `65536`                 | Maximum WebSocket message size (64 KB)               |
-
-### Agent
-
-| Variable                 | Default                     | Description                                     |
-| ------------------------ | --------------------------- | ----------------------------------------------- |
-| `SERVER_URL`             | `ws://localhost:3001`       | Signaling server WebSocket URL                  |
-| `WEB_URL`                | `https://aether.vercel.app` | Web viewer base URL (used in share link output) |
-| `ICE_SERVERS`            | Google STUN                 | JSON array of ICE server configurations         |
-| `MAX_RECONNECT_ATTEMPTS` | `3`                         | Signaling reconnect retry count                 |
-| `CONNECTION_TIMEOUT_MS`  | `10000`                     | Initial connection timeout in milliseconds      |
-
-### Web
-
-| Variable           | Default               | Description                             |
-| ------------------ | --------------------- | --------------------------------------- |
-| `VITE_WS_URL`      | `ws://localhost:3001` | Signaling server WebSocket URL          |
-| `VITE_ICE_SERVERS` | Google STUN           | JSON array of ICE server configurations |
-
----
-
 ## Security
 
 Security is a first-class concern in Aether, not an afterthought.
 
 ### End-to-End Encryption
 
-All terminal data is transmitted over **WebRTC DataChannels**, which mandate **DTLS encryption** — the same protocol underpinning HTTPS. The signaling server is architecturally incapable of reading terminal content; it only relays connection metadata during the handshake.
+All terminal data is transmitted over **WebRTC DataChannels**, which mandate **DTLS encryption** - the same protocol underpinning HTTPS. The signaling server is architecturally incapable of reading terminal content; it only relays connection metadata during the handshake.
 
 ### Environment Sanitization
 
@@ -316,7 +252,7 @@ Aether's own configuration variables are also excluded from the PTY environment.
 | Control            | Details                                                                                   |
 | ------------------ | ----------------------------------------------------------------------------------------- |
 | Origin validation  | Browser clients must match`ALLOWED_ORIGINS`; CLI agents are exempt (no `Origin` header)   |
-| Rate limiting      | Sliding-window per-IP limits — connections: 20/min, registrations: 5/min, joins: 15/min  |
+| Rate limiting      | Sliding-window per-IP limits - connections: 20/min, registrations: 5/min, joins: 15/min  |
 | Connection caps    | Per-IP: 10 · Global: 500                                                                 |
 | Payload validation | Whitelist-based key filtering with per-type size gates (offer/answer: 32 KB · ICE: 4 KB) |
 | Message size limit | DataChannel messages capped at 4,096 bytes                                                |
@@ -324,95 +260,43 @@ Aether's own configuration variables are also excluded from the PTY environment.
 
 ### Session Isolation
 
-- Each session has a unique 6-digit code — guessing is rate-limited
+- Each session has a unique 6-digit code (guessing is rate-limited)
 - Only one viewer may connect per session at a time
 - Agent disconnect immediately tears down the room and evicts any active viewer
 
 ---
 
-## Building for Production
+### Tech Stack
 
-### Agent — Standalone Binaries
-
-```bash
-cd agent
-npm run build        # Compile TypeScript
-npm run build:exe    # Package as standalone executables
-```
-
-Output: `agent/binaries/` — includes Windows x64 and macOS x64 binaries.
-
-### Web App
-
-```bash
-cd web
-npm run build        # Production build → web/dist/
-npm run preview      # Local preview of production build
-```
-
-### Signaling Server
-
-```bash
-cd server
-npm run build        # Compile TypeScript → server/dist/
-npm start            # Run the compiled production build
-```
-
----
-
-## Tech Stack
-
-| Layer      | Technology                                             | Purpose                              |
-| ---------- | ------------------------------------------------------ | ------------------------------------ |
-| **Agent**  | [Node.js 22+](https://nodejs.org)                      | Runtime                              |
-|            | [node-pty](https://github.com/nicedoc/node-pty)        | Pseudo-terminal spawning             |
-|            | [@roamhq/wrtc](https://github.com/nicedoc/node-webrtc) | WebRTC for Node.js (native bindings) |
-|            | [ws](https://github.com/websockets/ws)                 | WebSocket client                     |
-|            | [nanoid](https://github.com/ai/nanoid)                 | Session code generation              |
-| **Server** | [Express 5](https://expressjs.com)                     | HTTP server framework                |
-|            | [ws](https://github.com/websockets/ws)                 | WebSocket server                     |
-|            | [Mongoose](https://mongoosejs.com)                     | MongoDB ODM (optional)               |
-| **Web**    | [React 19](https://react.dev)                          | UI framework                         |
-|            | [Vite 8](https://vite.dev)                             | Build tooling & dev server           |
-|            | [xterm.js 6](https://xtermjs.org)                      | In-browser terminal emulator         |
-|            | [Tailwind CSS 4](https://tailwindcss.com)              | Utility-first styling                |
-|            | [React Router 7](https://reactrouter.com)              | Client-side routing                  |
-|            | [Lucide React](https://lucide.dev)                     | Icon system                          |
-| **Shared** | [TypeScript 5](https://www.typescriptlang.org)         | Static typing across all workspaces  |
-|            | [WebRTC](https://webrtc.org)                           | P2P DataChannel transport            |
-
----
+* **Agent:**[Node.js 22+](https://nodejs.org), [node-pty](https://www.google.com/search?q=%5Bhttps://github.com/nicedoc/node-pty%5D(https://github.com/nicedoc/node-pty)) (terminal spawning), [@roamhq/wrtc](https://www.google.com/search?q=%5Bhttps://github.com/nicedoc/node-webrtc%5D(https://github.com/nicedoc/node-webrtc)) (WebRTC), [ws](https://www.google.com/search?q=%5Bhttps://github.com/websockets/ws%5D(https://github.com/websockets/ws)) (WebSockets), [nanoid](https://www.google.com/search?q=%5Bhttps://github.com/ai/nanoid%5D(https://github.com/ai/nanoid)).
+* **Server:**[Express 5](https://expressjs.com), [ws](https://www.google.com/search?q=%5Bhttps://github.com/websockets/ws%5D(https://github.com/websockets/ws)) (WebSockets), [Mongoose](https://mongoosejs.com) .
+* **Web:**[React 19](https://react.dev), [Vite 8](https://vite.dev), [xterm.js 6](https://www.google.com/search?q=%5Bhttps://xtermjs.org%5D(https://xtermjs.org)) (browser terminal), [Tailwind CSS 4](https://tailwindcss.com), [React Router 7](https://reactrouter.com), [Lucide React](https://lucide.dev).
+* **Shared:**[TypeScript 5](https://www.typescriptlang.org), [WebRTC](https://webrtc.org) (P2P transport).
 
 ## Contributing
 
 Contributions are welcome. Here's how to get involved:
 
 1. **Fork** the repository
-2. **Create a feature branch** — `git checkout -b feature/my-feature`
-3. **Commit your changes** — `git commit -m "feat: describe what you did"`
+2. **Create a feature branch** : `git checkout -b feature/my-feature`
+3. **Commit your changes** : `git commit -m "feat: describe what you did"`
 4. **Push and open a Pull Request**
 
 ### Development Notes
 
-- The monorepo uses **npm workspaces** — always run `npm install` from the root
+- The monorepo uses **npm workspaces** - always run `npm install` from the root
 - `npm run dev` starts the server and web app together via `concurrently`
 - The agent must be started separately with `npm run dev:agent`
 - TypeScript strict mode is enabled across all three workspaces
-- Commits follow [Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`, `chore:`, `docs:`, etc.
-
----
-
-## License
-
-Aether is open source and available under the [MIT License](LICENSE).
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org/) - `feat:`, `fix:`, `chore:`, `docs:`, etc.
 
 ---
 
 <div align="center">
 
-Built with care for terminals everywhere.
+#### Built with care for terminals everywhere.
 
-[aether.vercel.app](https://aether.vercel.app) · [Issues](https://github.com/indrasuthar07/Aether/issues)
+### [aether.vercel.app](https://aether.vercel.app) · [Issues](https://github.com/indrasuthar07/Aether/issues)
 
 </div>
 
