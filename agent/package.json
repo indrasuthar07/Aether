@@ -1,6 +1,6 @@
 {
   "name": "aether-cli-agent",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Aether terminal sharing agent",
   "main": "dist/index.js",
   "scripts": {
@@ -29,15 +29,15 @@
     "pkg": "^5.8.1",
     "ts-node": "^10.9.2"
   },
-"pkg": {
-  "assets": [
-    "node_modules/@roamhq/wrtc/build/Release/**/*",
-    "node_modules/node-pty/build/Release/**/*"
-  ],
-  "targets": [
-    "node18-win-x64",
-    "node18-macos-x64"
-  ],
-  "outputPath": "./binaries"
-}
+  "pkg": {
+    "assets": [
+      "node_modules/@roamhq/wrtc/build/Release/**/*",
+      "node_modules/node-pty/build/Release/**/*"
+    ],
+    "targets": [
+      "node18-win-x64",
+      "node18-macos-x64"
+    ],
+    "outputPath": "./binaries"
+  }
 }
