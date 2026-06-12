@@ -1,6 +1,6 @@
 {
   "name": "aether-cli-agent",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Aether terminal sharing agent",
   "main": "dist/index.js",
   "scripts": {
