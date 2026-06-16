@@ -88,6 +88,9 @@ function TerminalPage() {
 
     const handleOpen = () => {
       setStatus('live');
+      setTimeout(() => {
+        terminalViewRef.current?.fit();
+      }, 50);
     };
 
     const handleChannelMessage = (event: MessageEvent) => {

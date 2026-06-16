@@ -8,6 +8,7 @@ interface TerminalViewProps {
 
 interface TerminalViewHandle {
   write: (data: string) => void;
+  fit: () => void;
 }
 
 const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
@@ -18,8 +19,14 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     });
 
     useImperativeHandle(ref, () => ({
-      write
-    }), [write]);
+      write,
+      fit: () => {
+        const size = fit();
+        if (size.cols > 0 && size.rows > 0) {
+          onResize(size.cols, size.rows);
+        }
+      }
+    }), [write, fit, onResize]);
 
     // Fit terminal after mount: cascade through multiple delays
     useEffect(() => {

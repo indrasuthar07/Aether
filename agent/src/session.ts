@@ -39,7 +39,8 @@ const state: SessionState = {
   isCleaningUp: false,
 };
 
-let ptyDataHandle: { dispose(): void } | null = null;
+const MAX_BUFFER_SIZE = 100 * 1024; // 100KB
+let ptyBuffer = '';
 
 export function getSessionState(): Readonly<SessionState> {
   return state;
@@ -47,10 +48,7 @@ export function getSessionState(): Readonly<SessionState> {
 
 // Cleanup 
 function cleanupPtyListener(): void {
-  if (ptyDataHandle) {
-    ptyDataHandle.dispose();
-    ptyDataHandle = null;
-  }
+  // Legacy function kept to avoid breaking references
 }
 
 export function cleanup(): void {
@@ -114,12 +112,10 @@ function setupViewerConnection(code: string): void {
   peer.setDataChannelEvents({
     onOpen: () => {
       logger.success('DataChannel open — terminal is now shared!');
-
-      // Dispose any previous listener, then register a fresh one
-      cleanupPtyListener();
-      ptyDataHandle = ptyProcess.onData((data: string) => {
-        peer.sendData(data);
-      });
+      // Send the buffered output to the new viewer so they see the prompt/history immediately
+      if (ptyBuffer) {
+        peer.sendData(ptyBuffer);
+      }
     },
 
     onMessage: (data: string) => {
@@ -212,6 +208,17 @@ export async function startSession(code: string): Promise<void> {
   });
   state.pty = ptyProcess;
   logger.success('Terminal spawned');
+
+  // Buffer output permanently and send to peer if connected
+  ptyProcess.onData((data: string) => {
+    ptyBuffer += data;
+    if (ptyBuffer.length > MAX_BUFFER_SIZE) {
+      ptyBuffer = ptyBuffer.substring(ptyBuffer.length - MAX_BUFFER_SIZE);
+    }
+    if (state.peer && state.peer.isDataChannelOpen()) {
+      state.peer.sendData(data);
+    }
+  });
 
   // 6. Handle signaling messages
   signaling.onMessage((message: SignalingMessage) => {
