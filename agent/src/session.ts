@@ -112,6 +112,10 @@ function setupViewerConnection(code: string): void {
   peer.setDataChannelEvents({
     onOpen: () => {
       logger.success('DataChannel open — terminal is now shared!');
+      
+      // Dirty node-pty's internal dimension cache. 
+      resizePTY(ptyProcess, 81, 25, config.MAX_COLS, config.MAX_ROWS);
+
       // Send the buffered output to the new viewer so they see the prompt/history immediately
       if (ptyBuffer) {
         peer.sendData(ptyBuffer);

@@ -53,7 +53,7 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
       cursorStyle: 'bar',
       scrollback: 5000,
       allowProposedApi: true,
-      convertEol: true
+      convertEol: false
     });
 
     const fitAddon = new FitAddon();

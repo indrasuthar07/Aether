@@ -1,10 +1,10 @@
+@import '@xterm/xterm/css/xterm.css';
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
-@import '@xterm/xterm/css/xterm.css';
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -34,12 +34,14 @@
   }
 
   .xterm {
-    height: 100% !important;
+    height: 100%;
+    box-sizing: border-box;
   }
   .xterm .xterm-viewport {
-    overflow-y: scroll !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .xterm .xterm-screen {
-    overflow: hidden !important;
+    overflow: hidden;
   }
 }
