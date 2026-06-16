@@ -86,8 +86,6 @@ function TerminalPage() {
   useEffect(() => {
     if (!dataChannel) return;
 
-    let syncInterval: ReturnType<typeof setInterval>;
-
     const handleOpen = () => {
       setStatus('live');
       
@@ -95,12 +93,6 @@ function TerminalPage() {
       setTimeout(() => {
         terminalViewRef.current?.fit();
       }, 50);
-
-      syncInterval = setInterval(() => {
-        if (statusRef.current === 'live') {
-          terminalViewRef.current?.fit();
-        }
-      }, 2000);
     };
 
     const handleChannelMessage = (event: MessageEvent) => {
@@ -142,7 +134,6 @@ function TerminalPage() {
     }
 
     return () => {
-      if (syncInterval) clearInterval(syncInterval);
       dataChannel.removeEventListener('open', handleOpen);
       dataChannel.removeEventListener('message', handleChannelMessage);
       dataChannel.removeEventListener('close', handleClose);
