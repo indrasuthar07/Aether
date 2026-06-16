@@ -3,6 +3,9 @@ import { banner, printcode, info, error } from './logger';
 import { createSessionCode } from './code';
 import { startSession, cleanup } from './session';
 import { config } from './config';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 
 function getShareUrl(code: string): string {
   return `${config.WEB_URL}/${code}`;
@@ -19,8 +22,18 @@ function showHelp(): void {
   console.log('');
 }
 
+function getVersion(): string {
+  try {
+    const pkgPath = join(__dirname, '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
+
 function showVersion(): void {
-  console.log('  aether v1.0.0');
+  console.log(`  aether v${getVersion()}`);
 }
 
 async function main(): Promise<void> {
