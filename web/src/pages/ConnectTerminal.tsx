@@ -1,41 +1,139 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import CodeInput from '../components/CodeInput';
 import { isValidSessionCode } from '../types';
-import { ArrowLeft, Shield, Zap, Activity, HelpCircle, ChevronDown, Loader2, Terminal } from 'lucide-react';
+import { ArrowLeft, Shield, Zap, Activity, HelpCircle, ChevronDown, Loader2, Terminal, AlertCircle } from 'lucide-react';
 
 function ConnectTerminal() {
   const [code, setCode] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const validationWsRef = useRef<WebSocket | null>(null);
 
   const isComplete = code.length === 6;
 
-  // Handles the simulated terminal handshake visual sequence
+  // Clear error when user changes the code
+  const handleCodeChange = useCallback((newCode: string) => {
+    setCode(newCode);
+    if (error) setError('');
+  }, [error]);
+
+  // Clean up any lingering validation WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (validationWsRef.current) {
+        validationWsRef.current.close();
+        validationWsRef.current = null;
+      }
+    };
+  }, []);
+
+  // Validates the session code against the signaling server before navigating
   const triggerConnectionSequence = useCallback(() => {
     if (!isValidSessionCode(code)) return;
     setIsConnecting(true);
+    setError('');
     setLogs(['> Initializing Aether peer handshake...']);
 
-    const steps = [
-      { delay: 300, text: '> Locating signaling server...' },
-      { delay: 600, text: '> Establishing direct WebRTC P2P tunnel...' },
-      { delay: 900, text: '> Exchanging end-to-end E2EE keys...' },
-      { delay: 1200, text: '✓ Secure session verified. Redirecting...' },
-    ];
+    // Open a temporary WebSocket to validate the code exists
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch {
+      setError('Unable to reach the signaling server. Please try again.');
+      setIsConnecting(false);
+      return;
+    }
+    validationWsRef.current = ws;
 
-    steps.forEach((step) => {
-      setTimeout(() => {
-        setLogs((prev) => [...prev, step.text]);
-      }, step.delay);
+    let resolved = false;
+
+    const cleanup = () => {
+      resolved = true;
+      if (validationWsRef.current === ws) {
+        validationWsRef.current = null;
+      }
+      try { ws.close(); } catch { /* already closed */ }
+    };
+
+    // Timeout: if the server doesn't respond within 6 seconds, show an error
+    const timeout = setTimeout(() => {
+      if (resolved) return;
+      cleanup();
+      setError('Connection timed out. Please check your network and try again.');
+      setIsConnecting(false);
+    }, 6000);
+
+    ws.addEventListener('open', () => {
+      if (resolved) return;
+      setLogs(prev => [...prev, '> Locating signaling server...']);
+      // Send a join to check if the room exists
+      ws.send(JSON.stringify({ type: 'join', payload: { code } }));
     });
 
-    // Final redirection after logs finish printing
-    setTimeout(() => {
-      navigate(`/term/${code}`);
-    }, 1500);
+    ws.addEventListener('message', (event: MessageEvent) => {
+      if (resolved) return;
+      try {
+        const data = JSON.parse(String(event.data));
+
+        if (data.type === 'ready') {
+          // Room exists! Close validation WS and navigate to the real terminal page
+          clearTimeout(timeout);
+          cleanup();
+          setLogs(prev => [
+            ...prev,
+            '> Establishing direct WebRTC P2P tunnel...',
+            '> Exchanging end-to-end E2EE keys...',
+            '✓ Secure session verified. Redirecting...'
+          ]);
+          // Short delay so user sees the success message
+          setTimeout(() => {
+            navigate(`/term/${code}`);
+          }, 400);
+        } else if (data.type === 'not-found') {
+          // Room doesn't exist — show error immediately
+          clearTimeout(timeout);
+          cleanup();
+          setError(`No active session found for code ${code}. Please check with the host.`);
+          setIsConnecting(false);
+          setLogs([]);
+        } else if (data.type === 'error') {
+          clearTimeout(timeout);
+          cleanup();
+          const msg = (data.payload?.message as string) || 'Server error. Please try again.';
+          setError(msg);
+          setIsConnecting(false);
+          setLogs([]);
+        }
+      } catch {
+        // Ignore malformed messages
+      }
+    });
+
+    ws.addEventListener('error', () => {
+      if (resolved) return;
+      clearTimeout(timeout);
+      cleanup();
+      setError('Unable to reach the signaling server. Please try again.');
+      setIsConnecting(false);
+      setLogs([]);
+    });
+
+    ws.addEventListener('close', () => {
+      if (resolved) return;
+      clearTimeout(timeout);
+      resolved = true;
+      if (validationWsRef.current === ws) {
+        validationWsRef.current = null;
+      }
+      setError('Connection closed unexpectedly. Please try again.');
+      setIsConnecting(false);
+      setLogs([]);
+    });
   }, [code, navigate]);
 
   const handleSubmit = useCallback(() => {
@@ -91,7 +189,7 @@ function ConnectTerminal() {
 
               {/* Input Area */}
               <div className="flex justify-center mb-8">
-                <CodeInput value={code} onChange={setCode} />
+                <CodeInput value={code} onChange={handleCodeChange} />
               </div>
 
               {/* Action Button */}
@@ -111,12 +209,22 @@ function ConnectTerminal() {
               </button>
 
               <div className="h-6 mt-3 flex items-center justify-center">
-                {isComplete && (
+                {isComplete && !error && (
                   <p className="text-[13px] text-blue-900/60 font-semibold animate-pulse tracking-wide">
                     Press Enter to connect
                   </p>
                 )}
               </div>
+
+              {/* Inline Error Banner */}
+              {error && (
+                <div className="mt-4 flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-[13px] text-red-700 font-medium leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             /* Live Terminal Handshake Output Screen */

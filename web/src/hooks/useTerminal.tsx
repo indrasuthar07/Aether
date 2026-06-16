@@ -91,18 +91,41 @@ export function useTerminal(options?: UseTerminalOptions): UseTerminalReturn {
     });
     resizeObserver.observe(containerEl);
 
-    // Extra safety: fit after the first animation frame to guarantee
-    // the browser has completed layout on initial navigation.
-    const rafId = requestAnimationFrame(() => {
+    // Cascading fit strategy
+    let disposed = false;
+    const fitTimers: ReturnType<typeof setTimeout>[] = [];
+
+    const safeFit = () => {
+      if (disposed) return;
       try {
         fitAddon.fit();
       } catch {
-        // Container may not be ready yet
+        // Terminal may have been disposed
       }
+    };
+
+    // Stage 1: rAF — first possible paint
+    const rafId = requestAnimationFrame(() => {
+      safeFit();
+      // Stage 2: double-rAF after browser has actually painted
+      const raf2 = requestAnimationFrame(() => {
+        safeFit();
+      });
+      fitTimers.push(raf2 as unknown as ReturnType<typeof setTimeout>);
     });
 
+    // Stage 3-6: escalating timeouts to catch slow layouts, CSS
+    for (const delay of [50, 150, 400, 800]) {
+      fitTimers.push(setTimeout(safeFit, delay));
+    }
+
     return () => {
+      disposed = true;
       cancelAnimationFrame(rafId);
+      for (const t of fitTimers) {
+        clearTimeout(t);
+        cancelAnimationFrame(t as unknown as number);
+      }
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeObserver.disconnect();
       inputDisposable.dispose();

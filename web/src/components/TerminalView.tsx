@@ -21,28 +21,25 @@ const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       write
     }), [write]);
 
-    // Fit terminal after mount: use rAF to wait for paint, then fit.
-    // A secondary delayed fit at 300ms catches edge cases where the
-    // flex container hasn't fully settled on first navigation.
+    // Fit terminal after mount: cascade through multiple delays
     useEffect(() => {
       let cancelled = false;
 
-      const rafId = requestAnimationFrame(() => {
+      const doFit = () => {
         if (cancelled) return;
         const size = fit();
-        onResize(size.cols, size.rows);
-      });
+        if (size.cols > 0 && size.rows > 0) {
+          onResize(size.cols, size.rows);
+        }
+      };
 
-      const timer = setTimeout(() => {
-        if (cancelled) return;
-        const size = fit();
-        onResize(size.cols, size.rows);
-      }, 300);
+      const rafId = requestAnimationFrame(doFit);
+      const timers = [100, 300, 600].map((ms) => setTimeout(doFit, ms));
 
       return () => {
         cancelled = true;
         cancelAnimationFrame(rafId);
-        clearTimeout(timer);
+        timers.forEach(clearTimeout);
       };
     }, [fit, onResize]);
 
