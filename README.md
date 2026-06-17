@@ -8,7 +8,7 @@
 [![WebRTC](https://img.shields.io/badge/WebRTC-P2P-333333?style=flat-square&logo=webrtc&logoColor=white)](https://webrtc.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 
-[**Live Demo**](https://aether.vercel.app) · [**Report Bug**](https://github.com/indrasuthar07/Aether/issues) · [**Request Feature**](https://github.com/indrasuthar07/Aether/issues)
+[**Live Demo**](https://useaether.vercel.app) · [**Report Bug**](https://github.com/indrasuthar07/Aether/issues) · [**Request Feature**](https://github.com/indrasuthar07/Aether/issues)
 
 </div>
 
@@ -296,7 +296,7 @@ Contributions are welcome. Here's how to get involved:
 
 #### Built with care for terminals everywhere.
 
-### [aether.vercel.app](https://aether.vercel.app) · [Issues](https://github.com/indrasuthar07/Aether/issues)
+### [useaether.vercel.app](https://useaether.vercel.app) · [Issues](https://github.com/indrasuthar07/Aether/issues)
 
 </div>
 

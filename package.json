@@ -13,6 +13,7 @@
     "dev": "npm run dev:server & npm run dev:web"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "typescript": "^5.0.0"
   }
 }
