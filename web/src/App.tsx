@@ -1,4 +1,4 @@
-import { Routes, Route, Outlet } from 'react-router-dom'; // 1. Import Outlet
+import { Routes, Route, Outlet } from 'react-router-dom'; 
 import Home from './pages/Home';
 import TerminalPage from './pages/TerminalPage';
 import ConnectTerminal from './pages/ConnectTerminal';

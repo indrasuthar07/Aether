@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-white/80">
             <a href="https://github.com/indrasuthar07/Aether" className="hover:text-white transition">GitHub</a>
             <Link to="/term" className="hover:text-white transition">Web Client</Link>
-            <a href="#" className="hover:text-white transition">aether.sh</a>
+            <a href="#hero" className="hover:text-white transition">aether.sh</a>
           </div>
         </div>
         <div className="mt-2 pt-6 border-t border-white/10 text-center text-xs text-white/50">
