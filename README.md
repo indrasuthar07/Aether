@@ -25,7 +25,7 @@ A E T H E R
    Secure terminal sharing                                  
 
   >  Session code:   4 5 2 2 3 7
-  >  Share URL:     https://aether.vercel.app/term/452237
+  >  Share URL:     https://useaether.vercel.app/term/452237
   >  Give this code to anyone you want to share your terminal with.
 
      Connecting to signaling server...
