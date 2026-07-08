@@ -78,7 +78,7 @@ Aether is a monorepo structured as three npm workspaces:
 | `agent/`  | CLI tool that shares your terminal | Node.js,`node-pty`, `@roamhq/wrtc`   |
 | `server/` | WebSocket signaling server         | Express 5,`ws`, MongoDB (optional)   |
 | `web/`    | Browser-based terminal viewer      | React 19, xterm.js 6, Tailwind CSS 4 |
-|
+
 
 ### Data Channel Protocol
 
