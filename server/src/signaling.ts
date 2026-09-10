@@ -128,13 +128,21 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
+        if (findRoomBySocket(ws)) {
+          sendError(ws, 'This connection already belongs to a session');
+          return;
+        }
+
         if (rooms.size >= config.MAX_ROOMS) {
           log.warn('Global room cap reached', { ip, activeRooms: rooms.size, maxRooms: config.MAX_ROOMS });
           sendError(ws, 'Server capacity reached. Try again later.');
           return;
         }
 
-        createRoom(code, ws);
+        if (!createRoom(code, ws)) {
+          sendError(ws, 'Session code is already in use. Start a new share session.');
+          return;
+        }
         log.info('Agent registered room', { code, ip });
         break;
       }
@@ -155,6 +163,11 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
+        if (findRoomBySocket(ws)) {
+          sendError(ws, 'This connection already belongs to a session');
+          return;
+        }
+
         const room = rooms.get(code);
         if (!room) {
           sendMessage(ws, { type: 'not-found' });
@@ -162,8 +175,11 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
-        // Register viewer via room module (handles socket index + TTL refresh)
-        setRoomViewer(code, ws);
+        // Claim the viewer slot only when it is vacant.
+        if (!setRoomViewer(code, ws)) {
+          sendError(ws, 'This session already has a viewer. Try again after they disconnect.');
+          return;
+        }
         log.info('Viewer joined room', { code, ip });
 
         // Notify agent that a viewer has joined
