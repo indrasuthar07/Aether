@@ -4,6 +4,7 @@
   "description": "Aether signaling server",
   "main": "dist/index.js",
   "scripts": {
+    "test": "npm run build && node --test test/*.test.cjs",
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts"
