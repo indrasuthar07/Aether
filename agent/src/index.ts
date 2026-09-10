@@ -8,7 +8,7 @@ import { join } from 'path';
 
 
 function getShareUrl(code: string): string {
-  return `${config.WEB_URL}/${code}`;
+  return new URL(`/term/${code}`, config.WEB_URL).toString();
 }
 
 function showHelp(): void {

@@ -62,9 +62,24 @@ function sendError(ws: WebSocket, message: string): void {
 export function handleConnection(ws: WebSocket, ip: string): void {
   log.info('New connection', { ip });
 
+  // Detect lost peers even when no signaling messages are being exchanged.
+  let isAlive = true;
+  ws.on('pong', () => { isAlive = true; });
+  const heartbeat = setInterval(() => {
+    if (!isAlive || ws.readyState !== WebSocket.OPEN) {
+      clearInterval(heartbeat);
+      ws.terminate();
+      return;
+    }
+    isAlive = false;
+    ws.ping();
+  }, 30_000);
+  heartbeat.unref();
+  ws.once('close', () => clearInterval(heartbeat));
+
   ws.on('message', (data) => {
     // Parse 
-    let message: SignalingMessage;
+    let parsed: unknown;
 
     try {
       const raw = data.toString();
@@ -77,19 +92,38 @@ export function handleConnection(ws: WebSocket, ip: string): void {
         return;
       }
 
-      message = JSON.parse(raw) as SignalingMessage;
+      parsed = JSON.parse(raw);
     } catch {
       log.warn('Malformed message', { ip });
       sendError(ws, 'Malformed message');
       return;
     }
 
-    // Type guard 
-    if (!message.type || typeof message.type !== 'string') {
+    // JSON may be null, an array, or a primitive instead of a message.
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      log.warn('Invalid message object', { ip });
+      sendError(ws, 'Message must be an object');
+      return;
+    }
+
+    if (!('type' in parsed) || typeof parsed.type !== 'string' || !parsed.type) {
       log.warn('Message missing type field', { ip });
       sendError(ws, 'Missing or invalid message type');
       return;
     }
+
+    if ('payload' in parsed && (
+      parsed.payload === null ||
+      typeof parsed.payload !== 'object' ||
+      Array.isArray(parsed.payload)
+    )) {
+      log.warn('Invalid message payload', { ip });
+      sendError(ws, 'Payload must be an object');
+      return;
+    }
+
+    // The envelope is validated; each route validates its own payload fields.
+    const message = parsed as { type: string; payload?: Record<string, unknown> };
 
     // Route 
     switch (message.type) {
@@ -98,7 +132,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
         const code = message.payload?.['code'];
 
         if (!isValidSessionCode(code)) {
-          log.warn('Invalid session code on register', { ip, rawCode: String(message.payload?.['code']).slice(0, 20) });
+          log.warn('Invalid session code on register', { ip });
           sendError(ws, 'Invalid session code: must be exactly 6 digits');
           return;
         }
@@ -109,13 +143,21 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
+        if (findRoomBySocket(ws)) {
+          sendError(ws, 'This connection already belongs to a session');
+          return;
+        }
+
         if (rooms.size >= config.MAX_ROOMS) {
           log.warn('Global room cap reached', { ip, activeRooms: rooms.size, maxRooms: config.MAX_ROOMS });
           sendError(ws, 'Server capacity reached. Try again later.');
           return;
         }
 
-        createRoom(code, ws);
+        if (!createRoom(code, ws)) {
+          sendError(ws, 'Session code is already in use. Start a new share session.');
+          return;
+        }
         log.info('Agent registered room', { code, ip });
         break;
       }
@@ -125,7 +167,7 @@ export function handleConnection(ws: WebSocket, ip: string): void {
         const code = message.payload?.['code'];
 
         if (!isValidSessionCode(code)) {
-          log.warn('Invalid session code on join', { ip, rawCode: String(message.payload?.['code']).slice(0, 20) });
+          log.warn('Invalid session code on join', { ip });
           sendError(ws, 'Invalid session code: must be exactly 6 digits');
           return;
         }
@@ -136,6 +178,11 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
+        if (findRoomBySocket(ws)) {
+          sendError(ws, 'This connection already belongs to a session');
+          return;
+        }
+
         const room = rooms.get(code);
         if (!room) {
           sendMessage(ws, { type: 'not-found' });
@@ -143,8 +190,11 @@ export function handleConnection(ws: WebSocket, ip: string): void {
           return;
         }
 
-        // Register viewer via room module (handles socket index + TTL refresh)
-        setRoomViewer(code, ws);
+        // Claim the viewer slot only when it is vacant.
+        if (!setRoomViewer(code, ws)) {
+          sendError(ws, 'This session already has a viewer. Try again after they disconnect.');
+          return;
+        }
         log.info('Viewer joined room', { code, ip });
 
         // Notify agent that a viewer has joined

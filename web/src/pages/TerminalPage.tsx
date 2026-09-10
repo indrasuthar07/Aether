@@ -13,6 +13,7 @@ function TerminalPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
   const terminalViewRef = useRef<TerminalViewHandle>(null);
   const hasJoinedRef = useRef(false);
   const statusRef = useRef<ConnectionStatus>(status);
@@ -31,8 +32,15 @@ function TerminalPage() {
         setStatus('waiting');
         break;
       case 'not-found':
+        setConnectionError('No active session was found for this code. Please check with the host.');
         setStatus('error');
         break;
+      case 'error': {
+        const messageText = message.payload?.['message'];
+        setConnectionError(typeof messageText === 'string' ? messageText : 'Unable to connect. Please try again.');
+        setStatus('error');
+        break;
+      }
       case 'offer': {
         const offer = message.payload?.['offer'] as RTCSessionDescriptionInit | undefined;
         if (offer) {
@@ -81,6 +89,16 @@ function TerminalPage() {
       send('join', { code });
     }
   }, [readyState, code, send]);
+
+  // Connection feedback now lives here, alongside the actual join.
+  useEffect(() => {
+    if (status !== 'connecting' && status !== 'waiting') return;
+    const timeout = setTimeout(() => {
+      setConnectionError('Connection timed out. Please check your network and try again.');
+      setStatus('error');
+    }, 15_000);
+    return () => clearTimeout(timeout);
+  }, [status]);
 
   // Handle DataChannel events
   useEffect(() => {
@@ -201,9 +219,9 @@ function TerminalPage() {
               <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shadow-sm">
                 <AlertCircle size={28} strokeWidth={2.5} />
               </div>
-              <h2 className="text-3xl font-bold text-aether-ink tracking-tight mb-3">Session not found</h2>
+              <h2 className="text-3xl font-bold text-aether-ink tracking-tight mb-3">Unable to connect</h2>
               <p className="text-base text-aether-ink/70 font-medium mb-8 leading-relaxed">
-                We couldn&apos;t find an active terminal session matching code <br />
+                {connectionError || 'The terminal connection failed. Please try again.'}<br />
                 <span className="inline-block mt-3 bg-black/5 px-3 py-1 rounded-md text-aether-ink font-mono text-lg border border-black/5 tracking-widest">
                   {code}
                 </span>

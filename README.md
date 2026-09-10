@@ -256,7 +256,7 @@ Aether's own configuration variables are also excluded from the PTY environment.
 | Connection caps    | Per-IP: 10 · Global: 500                                                                 |
 | Payload validation | Whitelist-based key filtering with per-type size gates (offer/answer: 32 KB · ICE: 4 KB) |
 | Message size limit | DataChannel messages capped at 4,096 bytes                                                |
-| Room TTL           | Rooms auto-expire after 5 minutes of inactivity                                           |
+| Room TTL           | Rooms expire after 5 minutes without a viewer; connected sessions stay open                                           |
 
 ### Session Isolation
 

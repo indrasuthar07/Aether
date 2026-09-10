@@ -39,7 +39,12 @@ export class Room {
   }
 
   refreshTTL(): void {
-    this.startTTL();
+    // Terminal traffic bypasses signaling, so it cannot refresh this timer.
+    if (this.viewerSocket) {
+      this.clearTTL();
+    } else {
+      this.startTTL();
+    }
   }
 
 // Register a callback invoked when the TTL expires.
@@ -72,11 +77,10 @@ interface SocketEntry {
 const socketIndex = new Map<WebSocket, SocketEntry>();
 
 // Registry management 
-export function createRoom(code: string, agentSocket: WebSocket): Room {
-  const existing = rooms.get(code);
-  if (existing) {
-    log.warn('Replacing existing room', { code });
-    removeRoom(code);
+export function createRoom(code: string, agentSocket: WebSocket): Room | null {
+  // Never replace a room or move a socket out of its current room.
+  if (rooms.has(code) || socketIndex.has(agentSocket)) {
+    return null;
   }
 
   const room = new Room(code, agentSocket, config.ROOM_TTL_MS);
@@ -119,18 +123,14 @@ export function findRoom(code: string): Room | undefined {
 }
 
 // Viewer management 
-export function setRoomViewer(code: string, ws: WebSocket): void {
+export function setRoomViewer(code: string, ws: WebSocket): boolean {
   const room = rooms.get(code);
-  if (!room) return;
-
-  // Clean up previous viewer if present
-  if (room.viewerSocket) {
-    socketIndex.delete(room.viewerSocket);
-  }
+  if (!room || room.viewerSocket || socketIndex.has(ws)) return false;
 
   room.viewerSocket = ws;
   socketIndex.set(ws, { code, role: 'viewer' });
   room.refreshTTL();
+  return true;
 }
 
 /** Remove the viewer from a room and unregister its socket. */
@@ -141,6 +141,7 @@ export function clearRoomViewer(code: string): void {
   if (room.viewerSocket) {
     socketIndex.delete(room.viewerSocket);
     room.viewerSocket = null;
+    room.refreshTTL();
   }
 }
 

@@ -63,7 +63,7 @@ export const config: AppConfig = {
   ALLOWED_ORIGINS: parseAllowedOrigins(process.env['ALLOWED_ORIGINS']),
 
   // Room lifecycle
-  ROOM_TTL_MS: parseIntSafe(process.env['ROOM_TTL_MS'], 300_000), // 5 minutes
+  ROOM_TTL_MS: parseIntSafe(process.env['ROOM_TTL_MS'], 300_000),
 
   // Connection limits
   MAX_ROOMS: parseIntSafe(process.env['MAX_ROOMS'], 500),
