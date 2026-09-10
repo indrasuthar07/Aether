@@ -62,6 +62,21 @@ function sendError(ws: WebSocket, message: string): void {
 export function handleConnection(ws: WebSocket, ip: string): void {
   log.info('New connection', { ip });
 
+  // Detect lost peers even when no signaling messages are being exchanged.
+  let isAlive = true;
+  ws.on('pong', () => { isAlive = true; });
+  const heartbeat = setInterval(() => {
+    if (!isAlive || ws.readyState !== WebSocket.OPEN) {
+      clearInterval(heartbeat);
+      ws.terminate();
+      return;
+    }
+    isAlive = false;
+    ws.ping();
+  }, 30_000);
+  heartbeat.unref();
+  ws.once('close', () => clearInterval(heartbeat));
+
   ws.on('message', (data) => {
     // Parse 
     let parsed: unknown;

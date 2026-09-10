@@ -39,7 +39,12 @@ export class Room {
   }
 
   refreshTTL(): void {
-    this.startTTL();
+    // Terminal traffic bypasses signaling, so it cannot refresh this timer.
+    if (this.viewerSocket) {
+      this.clearTTL();
+    } else {
+      this.startTTL();
+    }
   }
 
 // Register a callback invoked when the TTL expires.
@@ -136,6 +141,7 @@ export function clearRoomViewer(code: string): void {
   if (room.viewerSocket) {
     socketIndex.delete(room.viewerSocket);
     room.viewerSocket = null;
+    room.refreshTTL();
   }
 }
 
