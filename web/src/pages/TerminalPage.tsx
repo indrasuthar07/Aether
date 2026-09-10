@@ -90,6 +90,16 @@ function TerminalPage() {
     }
   }, [readyState, code, send]);
 
+  // Connection feedback now lives here, alongside the actual join.
+  useEffect(() => {
+    if (status !== 'connecting' && status !== 'waiting') return;
+    const timeout = setTimeout(() => {
+      setConnectionError('Connection timed out. Please check your network and try again.');
+      setStatus('error');
+    }, 15_000);
+    return () => clearTimeout(timeout);
+  }, [status]);
+
   // Handle DataChannel events
   useEffect(() => {
     if (!dataChannel) return;
