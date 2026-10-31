@@ -7,6 +7,9 @@
     "web"
   ],
   "scripts": {
+    "build:agent": "npm run build -w agent",
+    "test:agent": "npm test -w agent",
+    "test": "npm test -w agent",
     "dev:server": "npm run dev -w server",
     "dev:web": "npm run dev -w web",
     "dev:agent": "npm run dev -w agent",
@@ -15,5 +18,9 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "typescript": "^5.0.0"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true,
+    "fsevents@2.3.3": true
   }
 }

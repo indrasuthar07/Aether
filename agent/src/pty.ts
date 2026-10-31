@@ -1,11 +1,13 @@
+
 import type { IPty } from 'node-pty';
+import { existsSync } from 'fs';
 
 const pty = require('node-pty') as typeof import('node-pty');
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
-// Environment sanitization 
+// Environment sanitization
 const SENSITIVE_PATTERNS = [
   'MONGO_URI',
   'DATABASE_URL',
@@ -14,8 +16,8 @@ const SENSITIVE_PATTERNS = [
   'SESSION_SECRET',
   'JWT_SECRET',
   'ENCRYPTION_KEY',
-  'SERVER_URL',         
-  'WEB_URL',    
+  'SERVER_URL',
+  'WEB_URL',
 ];
 
 const SENSITIVE_PREFIXES = [
@@ -70,6 +72,7 @@ const SENSITIVE_SUFFIXES = [
 
 function isSensitive(key: string): boolean {
   const upper = key.toUpperCase();
+
   for (const pattern of SENSITIVE_PATTERNS) {
     if (upper === pattern) return true;
   }
@@ -81,31 +84,75 @@ function isSensitive(key: string): boolean {
   for (const suffix of SENSITIVE_SUFFIXES) {
     if (upper.endsWith(suffix)) return true;
   }
+
   return false;
 }
 
 function sanitizeEnv(): Record<string, string> {
   const clean: Record<string, string> = {};
+
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && !isSensitive(key)) {
       clean[key] = value;
     }
   }
+
   if (!clean['TERM']) {
     clean['TERM'] = 'xterm-256color';
   }
+
+  if (!clean['COLORTERM']) {
+    clean['COLORTERM'] = 'truecolor';
+  }
+
+  if (process.platform !== 'win32' && !clean['LANG']) {
+    clean['LANG'] = 'en_US.UTF-8';
+  }
+
   return clean;
 }
 
-// Shell detection 
-function getShell(): string {
+// Shell detection
+export function getShell(): string {
   if (process.platform === 'win32') {
+    // Windows: Use user-specified shell or default to PowerShell
+    const winShell = process.env['AETHER_SHELL'] || process.env['SHELL'];
+
+    if (winShell) {
+      return winShell;
+    }
+
     return 'powershell.exe';
   }
-  return process.env['SHELL'] || '/bin/bash';
+
+  // Explicit user override via AETHER_SHELL or standard SHELL
+  const envShell = process.env['AETHER_SHELL'] || process.env['SHELL'];
+
+  if (envShell && existsSync(envShell)) {
+    return envShell;
+  }
+
+  // macOS: Prefer zsh, then bash, then sh
+  if (process.platform === 'darwin') {
+    for (const sh of ['/bin/zsh', '/bin/bash', '/bin/sh']) {
+      if (existsSync(sh)) {
+        return sh;
+      }
+    }
+  }
+
+  // Linux / Unix: Check standard shell locations
+  for (const sh of ['/bin/bash', '/usr/bin/bash', '/bin/zsh', '/bin/sh']) {
+    if (existsSync(sh)) {
+      return sh;
+    }
+  }
+
+  // Final fallback
+  return envShell || 'sh';
 }
 
-// Public API 
+// Public API
 export interface PTYExitInfo {
   exitCode: number;
   signal?: number;
@@ -115,11 +162,21 @@ export interface PTYExitInfo {
 export function spawnPTY(onExit?: (info: PTYExitInfo) => void): IPty {
   const shell = getShell();
 
+  let cwd = process.env['HOME'] || process.env['USERPROFILE'] || process.cwd();
+
+  try {
+    if (!existsSync(cwd)) {
+      cwd = process.cwd();
+    }
+  } catch {
+    cwd = process.cwd();
+  }
+
   const ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',
     cols: DEFAULT_COLS,
     rows: DEFAULT_ROWS,
-    cwd: process.env['HOME'] || process.env['USERPROFILE'] || process.cwd(),
+    cwd,
     env: sanitizeEnv(),
   });
 
@@ -133,7 +190,7 @@ export function spawnPTY(onExit?: (info: PTYExitInfo) => void): IPty {
 }
 
 // Resize a PTY, clamping values to safe bounds.
-export function resizePTY(  
+export function resizePTY(
   ptyProcess: IPty,
   cols: number,
   rows: number,
