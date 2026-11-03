@@ -1,21 +1,33 @@
+
 {
   "name": "aether-cli-agent",
   "version": "1.0.6",
   "description": "Aether terminal sharing agent",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node dist/index.js --self-test",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
-    "build:exe": "npm run build && pkg . --out-path ./binaries"
+    "prepack": "npm run build"
   },
-  "keywords": [],
+  "keywords": [
+    "terminal",
+    "cli",
+    "webrtc",
+    "pty",
+    "share-terminal",
+    "remote-pairing"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bin": {
     "aether": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "@roamhq/wrtc": "^0.10.0",
     "chalk": "^4.1.2",
@@ -26,18 +38,6 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/ws": "^8.5.10",
-    "pkg": "^5.8.1",
     "ts-node": "^10.9.2"
-  },
-  "pkg": {
-    "assets": [
-      "node_modules/@roamhq/wrtc/build/Release/**/*",
-      "node_modules/node-pty/build/Release/**/*"
-    ],
-    "targets": [
-      "node18-win-x64",
-      "node18-macos-x64"
-    ],
-    "outputPath": "./binaries"
   }
 }

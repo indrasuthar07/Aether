@@ -1,11 +1,12 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
+
 import { banner, printcode, info, error } from './logger';
 import { createSessionCode } from './code';
 import { startSession, cleanup } from './session';
 import { config } from './config';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-
+import { runSelfTest } from './self-test';
 
 function getShareUrl(code: string): string {
   return new URL(`/term/${code}`, config.WEB_URL).toString();
@@ -16,9 +17,10 @@ function showHelp(): void {
   console.log('  Usage: aether [command]');
   console.log('');
   console.log('  Commands:');
-  console.log('    share     Share your terminal (default)');
-  console.log('    help      Show this help message');
-  console.log('    version   Show version');
+  console.log('    share       Share your terminal (default)');
+  console.log('    self-test   Verify WebRTC and PTY runtime functionality');
+  console.log('    help        Show this help message');
+  console.log('    version     Show version');
   console.log('');
 }
 
@@ -46,6 +48,12 @@ async function main(): Promise<void> {
     case '-h': {
       showHelp();
       return;
+    }
+
+    case 'self-test':
+    case '--self-test': {
+      const passed = await runSelfTest();
+      process.exit(passed ? 0 : 1);
     }
 
     case 'version':
@@ -77,7 +85,7 @@ async function main(): Promise<void> {
   }
 }
 
-// Process lifecycle 
+// Process lifecycle
 process.on('SIGINT', () => {
   console.log('');
   info('Shutting down...');
